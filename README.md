@@ -1,5 +1,8 @@
 # Chunkify Analytics Go API Library
 
+This is the API client for the Chunkify Analytics server. For automatic playback tracking
+in a browser, use [`@chunkify/player-analytics`](https://www.npmjs.com/package/@chunkify/player-analytics).
+
 <!-- x-release-please-start-version -->
 
 <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go"><img src="https://pkg.go.dev/badge/github.com/chunkifydev/chunkify-analytics-go.svg" alt="Go Reference"></a>
