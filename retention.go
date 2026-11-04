@@ -1,0 +1,188 @@
+// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
+
+package chunkifyanalytics
+
+import (
+	"context"
+	"net/http"
+	"net/url"
+	"slices"
+	"time"
+
+	"github.com/chunkifydev/chunkify-analytics-go/internal/apijson"
+	"github.com/chunkifydev/chunkify-analytics-go/internal/apiquery"
+	"github.com/chunkifydev/chunkify-analytics-go/internal/requestconfig"
+	"github.com/chunkifydev/chunkify-analytics-go/option"
+	"github.com/chunkifydev/chunkify-analytics-go/packages/param"
+	"github.com/chunkifydev/chunkify-analytics-go/packages/respjson"
+)
+
+// Private retained-event and view-cohort queries.
+//
+// RetentionService contains methods and other services that help with interacting
+// with the Chunkify Analytics API.
+//
+// Note, unlike clients, this service does not read variables from the environment
+// automatically. You should not instantiate this service directly, and instead use
+// the [NewRetentionService] method instead.
+type RetentionService struct {
+	Options []option.RequestOption
+}
+
+// NewRetentionService generates a new service that applies the given options to
+// each request. These options are applied after the parent client's options (if
+// there is one), and before any request-specific options.
+func NewRetentionService(opts ...option.RequestOption) (r RetentionService) {
+	r = RetentionService{}
+	r.Options = opts
+	return
+}
+
+// Count views along the video using recorded played ranges. Requires video_id.
+// Uses the final measurement, or the latest snapshot without an end event, for
+// each retained start matching the date and audience filters. Each attempt counts
+// once in each section it overlapped, including replays. Skipped sections do not
+// count. Older events without played ranges and attempts without a finite positive
+// duration are excluded from sample_views. Returns at most 200 consecutive
+// buckets, including zero counts, at a width of at least one second. This is media
+// position, not wall-clock time.
+func (r *RetentionService) Get(ctx context.Context, query RetentionGetParams, opts ...option.RequestOption) (res *RetentionReport, err error) {
+	var preClientOpts = []option.RequestOption{requestconfig.WithSecretKeySecurity()}
+	opts = slices.Concat(preClientOpts, r.Options, opts)
+	path := "v1/retention"
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
+	return res, err
+}
+
+type RetentionBucket struct {
+	// Exclusive end of the section, capped at the reported duration.
+	EndSeconds float64 `json:"end_seconds" api:"required"`
+	// views divided by sample_views.
+	Ratio float64 `json:"ratio" api:"required"`
+	// Inclusive start of the video section.
+	StartSeconds float64 `json:"start_seconds" api:"required"`
+	// Distinct attempts that played any part of this section. Each attempt counts at
+	// most once.
+	Views int64 `json:"views" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		EndSeconds   respjson.Field
+		Ratio        respjson.Field
+		StartSeconds respjson.Field
+		Views        respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r RetentionBucket) RawJSON() string { return r.JSON.raw }
+func (r *RetentionBucket) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type RetentionReport struct {
+	Buckets []RetentionBucket `json:"buckets" api:"required"`
+	// Longest measured duration in this selection. Null when there are no measured
+	// attempts.
+	DurationSeconds float64 `json:"duration_seconds" api:"required"`
+	// Bucket width, ceil(duration_seconds / 200), with a minimum of one second. Null
+	// without measurements.
+	IntervalSeconds float64 `json:"interval_seconds" api:"required"`
+	// Attempts whose selected final or latest snapshot contains played ranges and a
+	// finite positive media duration. Includes measured empty ranges.
+	SampleViews int64 `json:"sample_views" api:"required"`
+	// All matching attempts with a retained start.
+	Views int64 `json:"views" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Buckets         respjson.Field
+		DurationSeconds respjson.Field
+		IntervalSeconds respjson.Field
+		SampleViews     respjson.Field
+		Views           respjson.Field
+		ExtraFields     map[string]respjson.Field
+		raw             string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r RetentionReport) RawJSON() string { return r.JSON.raw }
+func (r *RetentionReport) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type RetentionGetParams struct {
+	// Video to report. Retention measures one video at a time.
+	VideoID string `query:"video_id" api:"required" json:"-"`
+	// Exact browser name, such as Chrome. Missing values do not match.
+	BrowserName param.Opt[string] `query:"browser_name,omitzero" json:"-"`
+	// Exact, case-sensitive city name from the local lookup, with 1 to 256 Unicode
+	// characters. Use country alongside city to distinguish places with the same name.
+	// Missing locations do not match.
+	City param.Opt[string] `query:"city,omitzero" json:"-"`
+	// Exact uppercase ISO 3166-1 alpha-2 country code, such as GB. Missing locations
+	// do not match.
+	Country param.Opt[string] `query:"country,omitzero" json:"-"`
+	// Inclusive RFC3339 occurrence-time lower bound, with timezone. Summary/video
+	// queries apply it to the selected view_started event. Must be before to.
+	From param.Opt[time.Time] `query:"from,omitzero" format:"date-time" json:"-"`
+	// Exact operating-system name, such as macOS. Missing values do not match.
+	OsName param.Opt[string] `query:"os_name,omitzero" json:"-"`
+	// Exact, case-sensitive page origin captured by the player, such as
+	// https://example.com. Metrics use the first retained view start; raw events use
+	// each event context. Missing values do not match.
+	PageOrigin param.Opt[string] `query:"page_origin,omitzero" json:"-"`
+	// Exact, case-sensitive page path captured by the player, such as /watch/video.
+	// Filter by page_origin as well to distinguish identical paths on different sites.
+	// Metrics use the first retained view start; raw events use each event context.
+	// Missing values do not match.
+	PagePath param.Opt[string] `query:"page_path,omitzero" json:"-"`
+	// Exclusive RFC3339 occurrence-time upper bound, with timezone. Summary/video
+	// queries apply it to the selected view_started event.
+	To param.Opt[time.Time] `query:"to,omitzero" format:"date-time" json:"-"`
+	// Filter one playback attempt by view ID. Metrics use its first retained start.
+	ViewID param.Opt[string] `query:"view_id,omitzero" json:"-"`
+	// Exact supplied viewer ID. Missing/null viewer IDs do not match.
+	ViewerID param.Opt[string] `query:"viewer_id,omitzero" json:"-"`
+	// Exact continent code from the local lookup. Missing locations do not match.
+	//
+	// Any of "AF", "AN", "AS", "EU", "NA", "OC", "SA".
+	Continent RetentionGetParamsContinent `query:"continent,omitzero" json:"-"`
+	// Exact device class. unknown matches an explicit unknown value.
+	//
+	// Any of "desktop", "mobile", "tablet", "unknown".
+	DeviceType RetentionGetParamsDeviceType `query:"device_type,omitzero" json:"-"`
+	paramObj
+}
+
+// URLQuery serializes [RetentionGetParams]'s query parameters as `url.Values`.
+func (r RetentionGetParams) URLQuery() (v url.Values, err error) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatRepeat,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Exact continent code from the local lookup. Missing locations do not match.
+type RetentionGetParamsContinent string
+
+const (
+	RetentionGetParamsContinentAf RetentionGetParamsContinent = "AF"
+	RetentionGetParamsContinentAn RetentionGetParamsContinent = "AN"
+	RetentionGetParamsContinentAs RetentionGetParamsContinent = "AS"
+	RetentionGetParamsContinentEu RetentionGetParamsContinent = "EU"
+	RetentionGetParamsContinentNa RetentionGetParamsContinent = "NA"
+	RetentionGetParamsContinentOc RetentionGetParamsContinent = "OC"
+	RetentionGetParamsContinentSa RetentionGetParamsContinent = "SA"
+)
+
+// Exact device class. unknown matches an explicit unknown value.
+type RetentionGetParamsDeviceType string
+
+const (
+	RetentionGetParamsDeviceTypeDesktop RetentionGetParamsDeviceType = "desktop"
+	RetentionGetParamsDeviceTypeMobile  RetentionGetParamsDeviceType = "mobile"
+	RetentionGetParamsDeviceTypeTablet  RetentionGetParamsDeviceType = "tablet"
+	RetentionGetParamsDeviceTypeUnknown RetentionGetParamsDeviceType = "unknown"
+)
