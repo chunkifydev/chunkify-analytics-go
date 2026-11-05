@@ -69,6 +69,10 @@ func (r *EventService) ListAutoPaging(ctx context.Context, query EventListParams
 }
 
 // Send one playback event using a public key. Success confirms storage completed.
+//
+// Configure the client with a public ingestion key for this method. The SDK sends
+// the event you supply; it does not collect playback events automatically. For
+// automatic browser player tracking, use `@chunkify/player-analytics`.
 func (r *EventService) Ingest(ctx context.Context, params EventIngestParams, opts ...option.RequestOption) (res *EventIngestResponseUnion, err error) {
 	if !param.IsOmitted(params.ContentEncoding) {
 		opts = append(opts, option.WithHeader("Content-Encoding", fmt.Sprintf("%v", params.ContentEncoding)))
