@@ -36,6 +36,9 @@ func NewHealthService(opts ...option.RequestOption) (r HealthService) {
 }
 
 // Check whether the service is ready.
+//
+// No API key is required. This checks collector readiness and does not return
+// project analytics.
 func (r *HealthService) Get(ctx context.Context, opts ...option.RequestOption) (res *Health, err error) {
 	var preClientOpts = []option.RequestOption{requestconfig.WithSecurity(requestconfig.Security{})}
 	opts = slices.Concat(preClientOpts, r.Options, opts)
