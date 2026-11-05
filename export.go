@@ -72,6 +72,10 @@ func (r *ExportService) New(ctx context.Context, body ExportNewParams, opts ...o
 // config.toml [rate_limits]. Link expiry is checked before starting, not during an
 // active download. S3 retention/deletion can remove source objects during a
 // download.
+//
+// The download URL contains the credential needed for this request. Treat it as a
+// secret until it expires. You can call this method without configuring an API key
+// on the client.
 func (r *ExportService) Download(ctx context.Context, token string, opts ...option.RequestOption) (res *string, err error) {
 	var preClientOpts = []option.RequestOption{requestconfig.WithSecurity(requestconfig.Security{})}
 	opts = slices.Concat(preClientOpts, r.Options, opts)
