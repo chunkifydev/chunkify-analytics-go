@@ -152,25 +152,28 @@ type ExportQueryParam struct {
 	PageOrigin param.Opt[string] `json:"page_origin,omitzero"`
 	// Exact, case-sensitive page_path from the first retained view start, or each
 	// event for raw-event exports.
-	PagePath param.Opt[string]    `json:"page_path,omitzero"`
-	To       param.Opt[time.Time] `json:"to,omitzero" format:"date-time"`
-	VideoID  param.Opt[string]    `json:"video_id,omitzero"`
-	ViewID   param.Opt[string]    `json:"view_id,omitzero"`
-	ViewerID param.Opt[string]    `json:"viewer_id,omitzero"`
+	PagePath         param.Opt[string]    `json:"page_path,omitzero"`
+	PlaybackRate     param.Opt[string]    `json:"playback_rate,omitzero"`
+	SubtitleLanguage param.Opt[string]    `json:"subtitle_language,omitzero"`
+	To               param.Opt[time.Time] `json:"to,omitzero" format:"date-time"`
+	UserID           param.Opt[string]    `json:"user_id,omitzero"`
+	VideoID          param.Opt[string]    `json:"video_id,omitzero"`
+	VideoTitle       param.Opt[string]    `json:"video_title,omitzero"`
+	ViewID           param.Opt[string]    `json:"view_id,omitzero"`
+	ViewerID         param.Opt[string]    `json:"viewer_id,omitzero"`
 	// Any of "AF", "AN", "AS", "EU", "NA", "OC", "SA".
 	Continent ExportQueryContinent `json:"continent,omitzero"`
 	// Any of "desktop", "mobile", "tablet", "unknown".
 	DeviceType ExportQueryDeviceType `json:"device_type,omitzero"`
-	// Any of "browser_name", "os_name", "device_type", "video_id", "viewer_id",
-	// "continent", "country", "city", "page_origin", "page_path".
+	// One custom dimension's values, such as custom.plan.
 	Dimension ExportQueryDimension `json:"dimension,omitzero"`
 	// Any of "chunkify.video.view_started", "chunkify.video.view_snapshot",
 	// "chunkify.video.playback_error", "chunkify.video.view_ended",
 	// "chunkify.video.playback_state_changed", "chunkify.video.rendition_changed",
-	// "chunkify.video.seek_completed".
+	// "chunkify.video.seek_completed", "chunkify.video.subtitle_changed",
+	// "chunkify.video.playback_rate_changed".
 	EventName ExportQueryEventName `json:"event_name,omitzero"`
-	// Any of "browser_name", "os_name", "device_type", "continent", "country", "city",
-	// "page_origin", "page_path".
+	// A custom dimension key, such as custom.plan.
 	GroupBy ExportQueryGroupBy `json:"group_by,omitzero"`
 	// Any of "hour", "day".
 	Interval ExportQueryInterval `json:"interval,omitzero"`
@@ -220,16 +223,21 @@ const (
 type ExportQueryDimension string
 
 const (
-	ExportQueryDimensionBrowserName ExportQueryDimension = "browser_name"
-	ExportQueryDimensionOsName      ExportQueryDimension = "os_name"
-	ExportQueryDimensionDeviceType  ExportQueryDimension = "device_type"
-	ExportQueryDimensionVideoID     ExportQueryDimension = "video_id"
-	ExportQueryDimensionViewerID    ExportQueryDimension = "viewer_id"
-	ExportQueryDimensionContinent   ExportQueryDimension = "continent"
-	ExportQueryDimensionCountry     ExportQueryDimension = "country"
-	ExportQueryDimensionCity        ExportQueryDimension = "city"
-	ExportQueryDimensionPageOrigin  ExportQueryDimension = "page_origin"
-	ExportQueryDimensionPagePath    ExportQueryDimension = "page_path"
+	ExportQueryDimensionBrowserName      ExportQueryDimension = "browser_name"
+	ExportQueryDimensionOsName           ExportQueryDimension = "os_name"
+	ExportQueryDimensionDeviceType       ExportQueryDimension = "device_type"
+	ExportQueryDimensionVideoID          ExportQueryDimension = "video_id"
+	ExportQueryDimensionViewerID         ExportQueryDimension = "viewer_id"
+	ExportQueryDimensionUserID           ExportQueryDimension = "user_id"
+	ExportQueryDimensionVideoTitle       ExportQueryDimension = "video_title"
+	ExportQueryDimensionContinent        ExportQueryDimension = "continent"
+	ExportQueryDimensionCountry          ExportQueryDimension = "country"
+	ExportQueryDimensionCity             ExportQueryDimension = "city"
+	ExportQueryDimensionPageOrigin       ExportQueryDimension = "page_origin"
+	ExportQueryDimensionPagePath         ExportQueryDimension = "page_path"
+	ExportQueryDimensionSubtitleLanguage ExportQueryDimension = "subtitle_language"
+	ExportQueryDimensionPlaybackRate     ExportQueryDimension = "playback_rate"
+	ExportQueryDimensionCustomKeys       ExportQueryDimension = "custom_keys"
 )
 
 type ExportQueryEventName string
@@ -242,19 +250,25 @@ const (
 	ExportQueryEventNameChunkifyVideoPlaybackStateChanged ExportQueryEventName = "chunkify.video.playback_state_changed"
 	ExportQueryEventNameChunkifyVideoRenditionChanged     ExportQueryEventName = "chunkify.video.rendition_changed"
 	ExportQueryEventNameChunkifyVideoSeekCompleted        ExportQueryEventName = "chunkify.video.seek_completed"
+	ExportQueryEventNameChunkifyVideoSubtitleChanged      ExportQueryEventName = "chunkify.video.subtitle_changed"
+	ExportQueryEventNameChunkifyVideoPlaybackRateChanged  ExportQueryEventName = "chunkify.video.playback_rate_changed"
 )
 
 type ExportQueryGroupBy string
 
 const (
-	ExportQueryGroupByBrowserName ExportQueryGroupBy = "browser_name"
-	ExportQueryGroupByOsName      ExportQueryGroupBy = "os_name"
-	ExportQueryGroupByDeviceType  ExportQueryGroupBy = "device_type"
-	ExportQueryGroupByContinent   ExportQueryGroupBy = "continent"
-	ExportQueryGroupByCountry     ExportQueryGroupBy = "country"
-	ExportQueryGroupByCity        ExportQueryGroupBy = "city"
-	ExportQueryGroupByPageOrigin  ExportQueryGroupBy = "page_origin"
-	ExportQueryGroupByPagePath    ExportQueryGroupBy = "page_path"
+	ExportQueryGroupByBrowserName      ExportQueryGroupBy = "browser_name"
+	ExportQueryGroupByOsName           ExportQueryGroupBy = "os_name"
+	ExportQueryGroupByDeviceType       ExportQueryGroupBy = "device_type"
+	ExportQueryGroupByContinent        ExportQueryGroupBy = "continent"
+	ExportQueryGroupByCountry          ExportQueryGroupBy = "country"
+	ExportQueryGroupByCity             ExportQueryGroupBy = "city"
+	ExportQueryGroupByPageOrigin       ExportQueryGroupBy = "page_origin"
+	ExportQueryGroupByPagePath         ExportQueryGroupBy = "page_path"
+	ExportQueryGroupBySubtitleLanguage ExportQueryGroupBy = "subtitle_language"
+	ExportQueryGroupByPlaybackRate     ExportQueryGroupBy = "playback_rate"
+	ExportQueryGroupByVideoTitle       ExportQueryGroupBy = "video_title"
+	ExportQueryGroupByUserID           ExportQueryGroupBy = "user_id"
 )
 
 type ExportQueryInterval string
@@ -300,7 +314,8 @@ const (
 // The property Resource is required.
 type ExportRequestParam struct {
 	// Any of "summary", "quality", "engagement", "timeseries", "videos", "events",
-	// "views", "errors", "dimensions", "renditions", "retention".
+	// "views", "errors", "dimensions", "renditions", "subtitles", "playback_rates",
+	// "retention".
 	Resource ExportRequestResource `json:"resource,omitzero" api:"required"`
 	// CSV column names in output order. Omit for all columns. Get the available names
 	// from GET /v1/exports using the same resource, kind and group_by. Unknown names,
@@ -321,17 +336,19 @@ func (r *ExportRequestParam) UnmarshalJSON(data []byte) error {
 type ExportRequestResource string
 
 const (
-	ExportRequestResourceSummary    ExportRequestResource = "summary"
-	ExportRequestResourceQuality    ExportRequestResource = "quality"
-	ExportRequestResourceEngagement ExportRequestResource = "engagement"
-	ExportRequestResourceTimeseries ExportRequestResource = "timeseries"
-	ExportRequestResourceVideos     ExportRequestResource = "videos"
-	ExportRequestResourceEvents     ExportRequestResource = "events"
-	ExportRequestResourceViews      ExportRequestResource = "views"
-	ExportRequestResourceErrors     ExportRequestResource = "errors"
-	ExportRequestResourceDimensions ExportRequestResource = "dimensions"
-	ExportRequestResourceRenditions ExportRequestResource = "renditions"
-	ExportRequestResourceRetention  ExportRequestResource = "retention"
+	ExportRequestResourceSummary       ExportRequestResource = "summary"
+	ExportRequestResourceQuality       ExportRequestResource = "quality"
+	ExportRequestResourceEngagement    ExportRequestResource = "engagement"
+	ExportRequestResourceTimeseries    ExportRequestResource = "timeseries"
+	ExportRequestResourceVideos        ExportRequestResource = "videos"
+	ExportRequestResourceEvents        ExportRequestResource = "events"
+	ExportRequestResourceViews         ExportRequestResource = "views"
+	ExportRequestResourceErrors        ExportRequestResource = "errors"
+	ExportRequestResourceDimensions    ExportRequestResource = "dimensions"
+	ExportRequestResourceRenditions    ExportRequestResource = "renditions"
+	ExportRequestResourceSubtitles     ExportRequestResource = "subtitles"
+	ExportRequestResourcePlaybackRates ExportRequestResource = "playback_rates"
+	ExportRequestResourceRetention     ExportRequestResource = "retention"
 )
 
 type ExportNewParams struct {
@@ -350,7 +367,8 @@ type ExportListColumnsParams struct {
 	// Report whose CSV columns to list.
 	//
 	// Any of "summary", "quality", "engagement", "timeseries", "videos", "events",
-	// "views", "errors", "dimensions", "renditions", "retention".
+	// "views", "errors", "dimensions", "renditions", "subtitles", "playback_rates",
+	// "retention".
 	Resource ExportListColumnsParamsResource `query:"resource,omitzero" api:"required" json:"-"`
 	// Optional on summary, quality and engagement. Group views by this field on their
 	// first retained start. Missing, null and nonstring context forms a null group;
@@ -360,10 +378,11 @@ type ExportListColumnsParams struct {
 	// name; filter by country to avoid combining names shared by different countries.
 	// Page groups use the first retained start even if playback continues after
 	// navigation. Filter by page_origin when grouping page_path to distinguish
-	// identical paths on different sites.
-	//
-	// Any of "browser_name", "os_name", "device_type", "continent", "country", "city",
-	// "page_origin", "page_path".
+	// identical paths on different sites. video_title groups by the title on each
+	// view's first retained start, so a renamed video counts each view under the title
+	// it started with. user_id groups by the user ID on each view's first retained
+	// start. Use custom.<key>, such as custom.plan, to group by a custom dimension;
+	// views without the key form the null group.
 	GroupBy ExportListColumnsParamsGroupBy `query:"group_by,omitzero" json:"-"`
 	// Metric set for every time bucket. Uses the same calculations and sample counts
 	// as the corresponding totals route.
@@ -386,17 +405,19 @@ func (r ExportListColumnsParams) URLQuery() (v url.Values, err error) {
 type ExportListColumnsParamsResource string
 
 const (
-	ExportListColumnsParamsResourceSummary    ExportListColumnsParamsResource = "summary"
-	ExportListColumnsParamsResourceQuality    ExportListColumnsParamsResource = "quality"
-	ExportListColumnsParamsResourceEngagement ExportListColumnsParamsResource = "engagement"
-	ExportListColumnsParamsResourceTimeseries ExportListColumnsParamsResource = "timeseries"
-	ExportListColumnsParamsResourceVideos     ExportListColumnsParamsResource = "videos"
-	ExportListColumnsParamsResourceEvents     ExportListColumnsParamsResource = "events"
-	ExportListColumnsParamsResourceViews      ExportListColumnsParamsResource = "views"
-	ExportListColumnsParamsResourceErrors     ExportListColumnsParamsResource = "errors"
-	ExportListColumnsParamsResourceDimensions ExportListColumnsParamsResource = "dimensions"
-	ExportListColumnsParamsResourceRenditions ExportListColumnsParamsResource = "renditions"
-	ExportListColumnsParamsResourceRetention  ExportListColumnsParamsResource = "retention"
+	ExportListColumnsParamsResourceSummary       ExportListColumnsParamsResource = "summary"
+	ExportListColumnsParamsResourceQuality       ExportListColumnsParamsResource = "quality"
+	ExportListColumnsParamsResourceEngagement    ExportListColumnsParamsResource = "engagement"
+	ExportListColumnsParamsResourceTimeseries    ExportListColumnsParamsResource = "timeseries"
+	ExportListColumnsParamsResourceVideos        ExportListColumnsParamsResource = "videos"
+	ExportListColumnsParamsResourceEvents        ExportListColumnsParamsResource = "events"
+	ExportListColumnsParamsResourceViews         ExportListColumnsParamsResource = "views"
+	ExportListColumnsParamsResourceErrors        ExportListColumnsParamsResource = "errors"
+	ExportListColumnsParamsResourceDimensions    ExportListColumnsParamsResource = "dimensions"
+	ExportListColumnsParamsResourceRenditions    ExportListColumnsParamsResource = "renditions"
+	ExportListColumnsParamsResourceSubtitles     ExportListColumnsParamsResource = "subtitles"
+	ExportListColumnsParamsResourcePlaybackRates ExportListColumnsParamsResource = "playback_rates"
+	ExportListColumnsParamsResourceRetention     ExportListColumnsParamsResource = "retention"
 )
 
 // Optional on summary, quality and engagement. Group views by this field on their
@@ -407,18 +428,26 @@ const (
 // name; filter by country to avoid combining names shared by different countries.
 // Page groups use the first retained start even if playback continues after
 // navigation. Filter by page_origin when grouping page_path to distinguish
-// identical paths on different sites.
+// identical paths on different sites. video_title groups by the title on each
+// view's first retained start, so a renamed video counts each view under the title
+// it started with. user_id groups by the user ID on each view's first retained
+// start. Use custom.<key>, such as custom.plan, to group by a custom dimension;
+// views without the key form the null group.
 type ExportListColumnsParamsGroupBy string
 
 const (
-	ExportListColumnsParamsGroupByBrowserName ExportListColumnsParamsGroupBy = "browser_name"
-	ExportListColumnsParamsGroupByOsName      ExportListColumnsParamsGroupBy = "os_name"
-	ExportListColumnsParamsGroupByDeviceType  ExportListColumnsParamsGroupBy = "device_type"
-	ExportListColumnsParamsGroupByContinent   ExportListColumnsParamsGroupBy = "continent"
-	ExportListColumnsParamsGroupByCountry     ExportListColumnsParamsGroupBy = "country"
-	ExportListColumnsParamsGroupByCity        ExportListColumnsParamsGroupBy = "city"
-	ExportListColumnsParamsGroupByPageOrigin  ExportListColumnsParamsGroupBy = "page_origin"
-	ExportListColumnsParamsGroupByPagePath    ExportListColumnsParamsGroupBy = "page_path"
+	ExportListColumnsParamsGroupByBrowserName      ExportListColumnsParamsGroupBy = "browser_name"
+	ExportListColumnsParamsGroupByOsName           ExportListColumnsParamsGroupBy = "os_name"
+	ExportListColumnsParamsGroupByDeviceType       ExportListColumnsParamsGroupBy = "device_type"
+	ExportListColumnsParamsGroupByContinent        ExportListColumnsParamsGroupBy = "continent"
+	ExportListColumnsParamsGroupByCountry          ExportListColumnsParamsGroupBy = "country"
+	ExportListColumnsParamsGroupByCity             ExportListColumnsParamsGroupBy = "city"
+	ExportListColumnsParamsGroupByPageOrigin       ExportListColumnsParamsGroupBy = "page_origin"
+	ExportListColumnsParamsGroupByPagePath         ExportListColumnsParamsGroupBy = "page_path"
+	ExportListColumnsParamsGroupBySubtitleLanguage ExportListColumnsParamsGroupBy = "subtitle_language"
+	ExportListColumnsParamsGroupByPlaybackRate     ExportListColumnsParamsGroupBy = "playback_rate"
+	ExportListColumnsParamsGroupByVideoTitle       ExportListColumnsParamsGroupBy = "video_title"
+	ExportListColumnsParamsGroupByUserID           ExportListColumnsParamsGroupBy = "user_id"
 )
 
 // Metric set for every time bucket. Uses the same calculations and sample counts
