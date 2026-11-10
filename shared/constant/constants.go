@@ -19,9 +19,11 @@ func ValueOf[T Constant[T]]() T {
 }
 
 type ChunkifyVideoPlaybackError string        // Always "chunkify.video.playback_error"
+type ChunkifyVideoPlaybackRateChanged string  // Always "chunkify.video.playback_rate_changed"
 type ChunkifyVideoPlaybackStateChanged string // Always "chunkify.video.playback_state_changed"
 type ChunkifyVideoRenditionChanged string     // Always "chunkify.video.rendition_changed"
 type ChunkifyVideoSeekCompleted string        // Always "chunkify.video.seek_completed"
+type ChunkifyVideoSubtitleChanged string      // Always "chunkify.video.subtitle_changed"
 type ChunkifyVideoViewEnded string            // Always "chunkify.video.view_ended"
 type ChunkifyVideoViewSnapshot string         // Always "chunkify.video.view_snapshot"
 type ChunkifyVideoViewStarted string          // Always "chunkify.video.view_started"
@@ -35,6 +37,9 @@ type Utc string                               // Always "UTC"
 func (c ChunkifyVideoPlaybackError) Default() ChunkifyVideoPlaybackError {
 	return "chunkify.video.playback_error"
 }
+func (c ChunkifyVideoPlaybackRateChanged) Default() ChunkifyVideoPlaybackRateChanged {
+	return "chunkify.video.playback_rate_changed"
+}
 func (c ChunkifyVideoPlaybackStateChanged) Default() ChunkifyVideoPlaybackStateChanged {
 	return "chunkify.video.playback_state_changed"
 }
@@ -43,6 +48,9 @@ func (c ChunkifyVideoRenditionChanged) Default() ChunkifyVideoRenditionChanged {
 }
 func (c ChunkifyVideoSeekCompleted) Default() ChunkifyVideoSeekCompleted {
 	return "chunkify.video.seek_completed"
+}
+func (c ChunkifyVideoSubtitleChanged) Default() ChunkifyVideoSubtitleChanged {
+	return "chunkify.video.subtitle_changed"
 }
 func (c ChunkifyVideoViewEnded) Default() ChunkifyVideoViewEnded { return "chunkify.video.view_ended" }
 func (c ChunkifyVideoViewSnapshot) Default() ChunkifyVideoViewSnapshot {
@@ -59,9 +67,11 @@ func (c TextCsv) Default() TextCsv       { return "text/csv" }
 func (c Utc) Default() Utc               { return "UTC" }
 
 func (c ChunkifyVideoPlaybackError) MarshalJSON() ([]byte, error)        { return marshalString(c) }
+func (c ChunkifyVideoPlaybackRateChanged) MarshalJSON() ([]byte, error)  { return marshalString(c) }
 func (c ChunkifyVideoPlaybackStateChanged) MarshalJSON() ([]byte, error) { return marshalString(c) }
 func (c ChunkifyVideoRenditionChanged) MarshalJSON() ([]byte, error)     { return marshalString(c) }
 func (c ChunkifyVideoSeekCompleted) MarshalJSON() ([]byte, error)        { return marshalString(c) }
+func (c ChunkifyVideoSubtitleChanged) MarshalJSON() ([]byte, error)      { return marshalString(c) }
 func (c ChunkifyVideoViewEnded) MarshalJSON() ([]byte, error)            { return marshalString(c) }
 func (c ChunkifyVideoViewSnapshot) MarshalJSON() ([]byte, error)         { return marshalString(c) }
 func (c ChunkifyVideoViewStarted) MarshalJSON() ([]byte, error)          { return marshalString(c) }
