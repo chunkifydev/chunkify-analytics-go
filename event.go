@@ -89,7 +89,8 @@ func (r *EventService) Ingest(ctx context.Context, params EventIngestParams, opt
 
 // AnalyticsEventUnion contains all possible properties and values from
 // [ViewStarted], [ViewSnapshot], [PlaybackError], [ViewEnded],
-// [PlaybackStateChanged], [RenditionChanged], [SeekCompleted].
+// [PlaybackStateChanged], [RenditionChanged], [SeekCompleted], [SubtitleChanged],
+// [PlaybackRateChanged].
 //
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type AnalyticsEventUnion struct {
@@ -105,7 +106,8 @@ type AnalyticsEventUnion struct {
 	// This field is a union of [ViewStartedErrorCodeUnion],
 	// [ViewSnapshotErrorCodeUnion], [PlaybackErrorErrorCodeUnion],
 	// [ViewEndedErrorCodeUnion], [PlaybackStateChangedErrorCodeUnion],
-	// [RenditionChangedErrorCodeUnion], [SeekCompletedErrorCodeUnion]
+	// [RenditionChangedErrorCodeUnion], [SeekCompletedErrorCodeUnion],
+	// [SubtitleChangedErrorCodeUnion], [PlaybackRateChangedErrorCodeUnion]
 	ErrorCode                   AnalyticsEventUnionErrorCode  `json:"error_code"`
 	ErrorFatal                  bool                          `json:"error_fatal"`
 	ErrorPlayheadSeconds        float64                       `json:"error_playhead_seconds"`
@@ -146,9 +148,17 @@ type AnalyticsEventUnion struct {
 	ViewID                      string                        `json:"view_id"`
 	ViewerID                    string                        `json:"viewer_id"`
 	BrowserContext              any                           `json:"browser_context"`
-	PlayedRanges                []shared.PlayedRange          `json:"played_ranges"`
-	PlayheadSeconds             float64                       `json:"playhead_seconds"`
-	VisibilityState             string                        `json:"visibility_state"`
+	// This field is from variant [ViewStarted].
+	Custom                  shared.CustomDimensions          `json:"custom"`
+	PlaybackRate            float64                          `json:"playback_rate"`
+	PlaybackRatePlayingTime []shared.PlaybackRatePlayingTime `json:"playback_rate_playing_time"`
+	PlayedRanges            []shared.PlayedRange             `json:"played_ranges"`
+	PlayheadSeconds         float64                          `json:"playhead_seconds"`
+	SubtitleLanguage        string                           `json:"subtitle_language"`
+	SubtitlePlayingTime     []shared.SubtitlePlayingTime     `json:"subtitle_playing_time"`
+	UserID                  string                           `json:"user_id"`
+	VideoTitle              string                           `json:"video_title"`
+	VisibilityState         string                           `json:"visibility_state"`
 	// This field is from variant [PlaybackStateChanged].
 	FromState PlaybackStateChangedFromState `json:"from_state"`
 	// This field is from variant [PlaybackStateChanged].
@@ -187,7 +197,11 @@ type AnalyticsEventUnion struct {
 	StateBeforeSeek SeekCompletedStateBeforeSeek `json:"state_before_seek"`
 	// This field is from variant [SeekCompleted].
 	ToPlayheadSeconds float64 `json:"to_playhead_seconds"`
-	JSON              struct {
+	// This field is from variant [SubtitleChanged].
+	PreviousSubtitleLanguage string `json:"previous_subtitle_language"`
+	// This field is from variant [PlaybackRateChanged].
+	PreviousPlaybackRate float64 `json:"previous_playback_rate"`
+	JSON                 struct {
 		ConnectorName               respjson.Field
 		ConnectorVersion            respjson.Field
 		DeliveryHostname            respjson.Field
@@ -237,8 +251,15 @@ type AnalyticsEventUnion struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		Custom                      respjson.Field
+		PlaybackRate                respjson.Field
+		PlaybackRatePlayingTime     respjson.Field
 		PlayedRanges                respjson.Field
 		PlayheadSeconds             respjson.Field
+		SubtitleLanguage            respjson.Field
+		SubtitlePlayingTime         respjson.Field
+		UserID                      respjson.Field
+		VideoTitle                  respjson.Field
 		VisibilityState             respjson.Field
 		FromState                   respjson.Field
 		PreviousStateDurationMs     respjson.Field
@@ -259,6 +280,8 @@ type AnalyticsEventUnion struct {
 		StateAfterSeek              respjson.Field
 		StateBeforeSeek             respjson.Field
 		ToPlayheadSeconds           respjson.Field
+		PreviousSubtitleLanguage    respjson.Field
+		PreviousPlaybackRate        respjson.Field
 		raw                         string
 	} `json:"-"`
 }
@@ -294,6 +317,16 @@ func (u AnalyticsEventUnion) AsRenditionChanged() (v RenditionChanged) {
 }
 
 func (u AnalyticsEventUnion) AsSeekCompleted() (v SeekCompleted) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u AnalyticsEventUnion) AsSubtitleChanged() (v SubtitleChanged) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u AnalyticsEventUnion) AsPlaybackRateChanged() (v PlaybackRateChanged) {
 	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
 	return
 }
@@ -350,6 +383,8 @@ type AnalyticsEventUnionParam struct {
 	OfPlaybackStateChanged *PlaybackStateChangedParam `json:",omitzero,inline"`
 	OfRenditionChanged     *RenditionChangedParam     `json:",omitzero,inline"`
 	OfSeekCompleted        *SeekCompletedParam        `json:",omitzero,inline"`
+	OfSubtitleChanged      *SubtitleChangedParam      `json:",omitzero,inline"`
+	OfPlaybackRateChanged  *PlaybackRateChangedParam  `json:",omitzero,inline"`
 	paramUnion
 }
 
@@ -360,7 +395,9 @@ func (u AnalyticsEventUnionParam) MarshalJSON() ([]byte, error) {
 		u.OfViewEnded,
 		u.OfPlaybackStateChanged,
 		u.OfRenditionChanged,
-		u.OfSeekCompleted)
+		u.OfSeekCompleted,
+		u.OfSubtitleChanged,
+		u.OfPlaybackRateChanged)
 }
 func (u *AnalyticsEventUnionParam) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, u)
@@ -381,6 +418,18 @@ func (u *AnalyticsEventUnionParam) asAny() any {
 		return u.OfRenditionChanged
 	} else if !param.IsOmitted(u.OfSeekCompleted) {
 		return u.OfSeekCompleted
+	} else if !param.IsOmitted(u.OfSubtitleChanged) {
+		return u.OfSubtitleChanged
+	} else if !param.IsOmitted(u.OfPlaybackRateChanged) {
+		return u.OfPlaybackRateChanged
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u AnalyticsEventUnionParam) GetCustom() shared.CustomDimensionsParam {
+	if vt := u.OfViewStarted; vt != nil {
+		return vt.Custom
 	}
 	return nil
 }
@@ -538,6 +587,22 @@ func (u AnalyticsEventUnionParam) GetToPlayheadSeconds() *float64 {
 }
 
 // Returns a pointer to the underlying variant's property, if present.
+func (u AnalyticsEventUnionParam) GetPreviousSubtitleLanguage() *string {
+	if vt := u.OfSubtitleChanged; vt != nil && vt.PreviousSubtitleLanguage.Valid() {
+		return &vt.PreviousSubtitleLanguage.Value
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u AnalyticsEventUnionParam) GetPreviousPlaybackRate() *float64 {
+	if vt := u.OfPlaybackRateChanged; vt != nil && vt.PreviousPlaybackRate.Valid() {
+		return &vt.PreviousPlaybackRate.Value
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
 func (u AnalyticsEventUnionParam) GetConnectorName() *string {
 	if vt := u.OfViewStarted; vt != nil {
 		return (*string)(&vt.ConnectorName)
@@ -552,6 +617,10 @@ func (u AnalyticsEventUnionParam) GetConnectorName() *string {
 	} else if vt := u.OfRenditionChanged; vt != nil {
 		return (*string)(&vt.ConnectorName)
 	} else if vt := u.OfSeekCompleted; vt != nil {
+		return (*string)(&vt.ConnectorName)
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		return (*string)(&vt.ConnectorName)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
 		return (*string)(&vt.ConnectorName)
 	}
 	return nil
@@ -573,6 +642,10 @@ func (u AnalyticsEventUnionParam) GetConnectorVersion() *string {
 		return &vt.ConnectorVersion.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.ConnectorVersion.Valid() {
 		return &vt.ConnectorVersion.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.ConnectorVersion.Valid() {
+		return &vt.ConnectorVersion.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.ConnectorVersion.Valid() {
+		return &vt.ConnectorVersion.Value
 	}
 	return nil
 }
@@ -592,6 +665,10 @@ func (u AnalyticsEventUnionParam) GetDeliveryHostname() *string {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.DeliveryHostname.Valid() {
 		return &vt.DeliveryHostname.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.DeliveryHostname.Valid() {
+		return &vt.DeliveryHostname.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.DeliveryHostname.Valid() {
+		return &vt.DeliveryHostname.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.DeliveryHostname.Valid() {
 		return &vt.DeliveryHostname.Value
 	}
 	return nil
@@ -613,6 +690,10 @@ func (u AnalyticsEventUnionParam) GetDeliveryRequestCount() *float64 {
 		return &vt.DeliveryRequestCount.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.DeliveryRequestCount.Valid() {
 		return &vt.DeliveryRequestCount.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.DeliveryRequestCount.Valid() {
+		return &vt.DeliveryRequestCount.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.DeliveryRequestCount.Valid() {
+		return &vt.DeliveryRequestCount.Value
 	}
 	return nil
 }
@@ -632,6 +713,10 @@ func (u AnalyticsEventUnionParam) GetDeliveryThroughputBps() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.DeliveryThroughputBps.Valid() {
 		return &vt.DeliveryThroughputBps.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.DeliveryThroughputBps.Valid() {
+		return &vt.DeliveryThroughputBps.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.DeliveryThroughputBps.Valid() {
+		return &vt.DeliveryThroughputBps.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.DeliveryThroughputBps.Valid() {
 		return &vt.DeliveryThroughputBps.Value
 	}
 	return nil
@@ -653,6 +738,10 @@ func (u AnalyticsEventUnionParam) GetDeliveryTransferredBytes() *float64 {
 		return &vt.DeliveryTransferredBytes.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.DeliveryTransferredBytes.Valid() {
 		return &vt.DeliveryTransferredBytes.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.DeliveryTransferredBytes.Valid() {
+		return &vt.DeliveryTransferredBytes.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.DeliveryTransferredBytes.Valid() {
+		return &vt.DeliveryTransferredBytes.Value
 	}
 	return nil
 }
@@ -672,6 +761,10 @@ func (u AnalyticsEventUnionParam) GetDroppedVideoFrames() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.DroppedVideoFrames.Valid() {
 		return &vt.DroppedVideoFrames.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.DroppedVideoFrames.Valid() {
+		return &vt.DroppedVideoFrames.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.DroppedVideoFrames.Valid() {
+		return &vt.DroppedVideoFrames.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.DroppedVideoFrames.Valid() {
 		return &vt.DroppedVideoFrames.Value
 	}
 	return nil
@@ -693,6 +786,10 @@ func (u AnalyticsEventUnionParam) GetEnvironment() *string {
 		return &vt.Environment.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.Environment.Valid() {
 		return &vt.Environment.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.Environment.Valid() {
+		return &vt.Environment.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.Environment.Valid() {
+		return &vt.Environment.Value
 	}
 	return nil
 }
@@ -712,6 +809,10 @@ func (u AnalyticsEventUnionParam) GetErrorCategory() *string {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.ErrorCategory.Valid() {
 		return (*string)(&vt.ErrorCategory.Value)
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.ErrorCategory.Valid() {
+		return (*string)(&vt.ErrorCategory.Value)
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.ErrorCategory.Valid() {
+		return (*string)(&vt.ErrorCategory.Value)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.ErrorCategory.Valid() {
 		return (*string)(&vt.ErrorCategory.Value)
 	}
 	return nil
@@ -733,6 +834,10 @@ func (u AnalyticsEventUnionParam) GetErrorFatal() *bool {
 		return &vt.ErrorFatal.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.ErrorFatal.Valid() {
 		return &vt.ErrorFatal.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.ErrorFatal.Valid() {
+		return &vt.ErrorFatal.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.ErrorFatal.Valid() {
+		return &vt.ErrorFatal.Value
 	}
 	return nil
 }
@@ -752,6 +857,10 @@ func (u AnalyticsEventUnionParam) GetErrorPlayheadSeconds() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.ErrorPlayheadSeconds.Valid() {
 		return &vt.ErrorPlayheadSeconds.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.ErrorPlayheadSeconds.Valid() {
+		return &vt.ErrorPlayheadSeconds.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.ErrorPlayheadSeconds.Valid() {
+		return &vt.ErrorPlayheadSeconds.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.ErrorPlayheadSeconds.Valid() {
 		return &vt.ErrorPlayheadSeconds.Value
 	}
 	return nil
@@ -773,6 +882,10 @@ func (u AnalyticsEventUnionParam) GetEventID() *string {
 		return (*string)(&vt.EventID)
 	} else if vt := u.OfSeekCompleted; vt != nil {
 		return (*string)(&vt.EventID)
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		return (*string)(&vt.EventID)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
+		return (*string)(&vt.EventID)
 	}
 	return nil
 }
@@ -792,6 +905,10 @@ func (u AnalyticsEventUnionParam) GetEventName() *string {
 	} else if vt := u.OfRenditionChanged; vt != nil {
 		return (*string)(&vt.EventName)
 	} else if vt := u.OfSeekCompleted; vt != nil {
+		return (*string)(&vt.EventName)
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		return (*string)(&vt.EventName)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
 		return (*string)(&vt.EventName)
 	}
 	return nil
@@ -813,6 +930,10 @@ func (u AnalyticsEventUnionParam) GetFirstVideoFrameTimeMs() *float64 {
 		return &vt.FirstVideoFrameTimeMs.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.FirstVideoFrameTimeMs.Valid() {
 		return &vt.FirstVideoFrameTimeMs.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.FirstVideoFrameTimeMs.Valid() {
+		return &vt.FirstVideoFrameTimeMs.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.FirstVideoFrameTimeMs.Valid() {
+		return &vt.FirstVideoFrameTimeMs.Value
 	}
 	return nil
 }
@@ -832,6 +953,10 @@ func (u AnalyticsEventUnionParam) GetFurthestProgressRatio() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.FurthestProgressRatio.Valid() {
 		return &vt.FurthestProgressRatio.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.FurthestProgressRatio.Valid() {
+		return &vt.FurthestProgressRatio.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.FurthestProgressRatio.Valid() {
+		return &vt.FurthestProgressRatio.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.FurthestProgressRatio.Valid() {
 		return &vt.FurthestProgressRatio.Value
 	}
 	return nil
@@ -853,6 +978,10 @@ func (u AnalyticsEventUnionParam) GetMaximumPlayheadSeconds() *float64 {
 		return &vt.MaximumPlayheadSeconds.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.MaximumPlayheadSeconds.Valid() {
 		return &vt.MaximumPlayheadSeconds.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.MaximumPlayheadSeconds.Valid() {
+		return &vt.MaximumPlayheadSeconds.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.MaximumPlayheadSeconds.Valid() {
+		return &vt.MaximumPlayheadSeconds.Value
 	}
 	return nil
 }
@@ -872,6 +1001,10 @@ func (u AnalyticsEventUnionParam) GetMediaDurationSeconds() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.MediaDurationSeconds.Valid() {
 		return &vt.MediaDurationSeconds.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.MediaDurationSeconds.Valid() {
+		return &vt.MediaDurationSeconds.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.MediaDurationSeconds.Valid() {
+		return &vt.MediaDurationSeconds.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.MediaDurationSeconds.Valid() {
 		return &vt.MediaDurationSeconds.Value
 	}
 	return nil
@@ -893,6 +1026,10 @@ func (u AnalyticsEventUnionParam) GetMediaHeightPx() *float64 {
 		return &vt.MediaHeightPx.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.MediaHeightPx.Valid() {
 		return &vt.MediaHeightPx.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.MediaHeightPx.Valid() {
+		return &vt.MediaHeightPx.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.MediaHeightPx.Valid() {
+		return &vt.MediaHeightPx.Value
 	}
 	return nil
 }
@@ -912,6 +1049,10 @@ func (u AnalyticsEventUnionParam) GetMediaWidthPx() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.MediaWidthPx.Valid() {
 		return &vt.MediaWidthPx.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.MediaWidthPx.Valid() {
+		return &vt.MediaWidthPx.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.MediaWidthPx.Valid() {
+		return &vt.MediaWidthPx.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.MediaWidthPx.Valid() {
 		return &vt.MediaWidthPx.Value
 	}
 	return nil
@@ -933,6 +1074,10 @@ func (u AnalyticsEventUnionParam) GetPlayerHeightPx() *float64 {
 		return &vt.PlayerHeightPx.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.PlayerHeightPx.Valid() {
 		return &vt.PlayerHeightPx.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.PlayerHeightPx.Valid() {
+		return &vt.PlayerHeightPx.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.PlayerHeightPx.Valid() {
+		return &vt.PlayerHeightPx.Value
 	}
 	return nil
 }
@@ -952,6 +1097,10 @@ func (u AnalyticsEventUnionParam) GetPlayerName() *string {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.PlayerName.Valid() {
 		return &vt.PlayerName.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.PlayerName.Valid() {
+		return &vt.PlayerName.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.PlayerName.Valid() {
+		return &vt.PlayerName.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.PlayerName.Valid() {
 		return &vt.PlayerName.Value
 	}
 	return nil
@@ -973,6 +1122,10 @@ func (u AnalyticsEventUnionParam) GetPlayerVersion() *string {
 		return &vt.PlayerVersion.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.PlayerVersion.Valid() {
 		return &vt.PlayerVersion.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.PlayerVersion.Valid() {
+		return &vt.PlayerVersion.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.PlayerVersion.Valid() {
+		return &vt.PlayerVersion.Value
 	}
 	return nil
 }
@@ -992,6 +1145,10 @@ func (u AnalyticsEventUnionParam) GetPlayerWidthPx() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.PlayerWidthPx.Valid() {
 		return &vt.PlayerWidthPx.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.PlayerWidthPx.Valid() {
+		return &vt.PlayerWidthPx.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.PlayerWidthPx.Valid() {
+		return &vt.PlayerWidthPx.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.PlayerWidthPx.Valid() {
 		return &vt.PlayerWidthPx.Value
 	}
 	return nil
@@ -1013,6 +1170,10 @@ func (u AnalyticsEventUnionParam) GetPlayingTimeMs() *float64 {
 		return &vt.PlayingTimeMs.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.PlayingTimeMs.Valid() {
 		return &vt.PlayingTimeMs.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.PlayingTimeMs.Valid() {
+		return &vt.PlayingTimeMs.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.PlayingTimeMs.Valid() {
+		return &vt.PlayingTimeMs.Value
 	}
 	return nil
 }
@@ -1032,6 +1193,10 @@ func (u AnalyticsEventUnionParam) GetReason() *string {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.Reason.Valid() {
 		return (*string)(&vt.Reason.Value)
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.Reason.Valid() {
+		return (*string)(&vt.Reason.Value)
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.Reason.Valid() {
+		return (*string)(&vt.Reason.Value)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.Reason.Valid() {
 		return (*string)(&vt.Reason.Value)
 	}
 	return nil
@@ -1053,6 +1218,10 @@ func (u AnalyticsEventUnionParam) GetRebufferCount() *float64 {
 		return &vt.RebufferCount.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.RebufferCount.Valid() {
 		return &vt.RebufferCount.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.RebufferCount.Valid() {
+		return &vt.RebufferCount.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.RebufferCount.Valid() {
+		return &vt.RebufferCount.Value
 	}
 	return nil
 }
@@ -1072,6 +1241,10 @@ func (u AnalyticsEventUnionParam) GetRebufferDurationMs() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.RebufferDurationMs.Valid() {
 		return &vt.RebufferDurationMs.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.RebufferDurationMs.Valid() {
+		return &vt.RebufferDurationMs.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.RebufferDurationMs.Valid() {
+		return &vt.RebufferDurationMs.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.RebufferDurationMs.Valid() {
 		return &vt.RebufferDurationMs.Value
 	}
 	return nil
@@ -1093,6 +1266,10 @@ func (u AnalyticsEventUnionParam) GetRebufferRatio() *float64 {
 		return &vt.RebufferRatio.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.RebufferRatio.Valid() {
 		return &vt.RebufferRatio.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.RebufferRatio.Valid() {
+		return &vt.RebufferRatio.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.RebufferRatio.Valid() {
+		return &vt.RebufferRatio.Value
 	}
 	return nil
 }
@@ -1112,6 +1289,10 @@ func (u AnalyticsEventUnionParam) GetRenditionSwitchCount() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.RenditionSwitchCount.Valid() {
 		return &vt.RenditionSwitchCount.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.RenditionSwitchCount.Valid() {
+		return &vt.RenditionSwitchCount.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.RenditionSwitchCount.Valid() {
+		return &vt.RenditionSwitchCount.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.RenditionSwitchCount.Valid() {
 		return &vt.RenditionSwitchCount.Value
 	}
 	return nil
@@ -1133,6 +1314,10 @@ func (u AnalyticsEventUnionParam) GetSchemaVersion() *float64 {
 		return (*float64)(&vt.SchemaVersion)
 	} else if vt := u.OfSeekCompleted; vt != nil {
 		return (*float64)(&vt.SchemaVersion)
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		return (*float64)(&vt.SchemaVersion)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
+		return (*float64)(&vt.SchemaVersion)
 	}
 	return nil
 }
@@ -1152,6 +1337,10 @@ func (u AnalyticsEventUnionParam) GetSDKName() *string {
 	} else if vt := u.OfRenditionChanged; vt != nil {
 		return (*string)(&vt.SDKName)
 	} else if vt := u.OfSeekCompleted; vt != nil {
+		return (*string)(&vt.SDKName)
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		return (*string)(&vt.SDKName)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
 		return (*string)(&vt.SDKName)
 	}
 	return nil
@@ -1173,6 +1362,10 @@ func (u AnalyticsEventUnionParam) GetSDKVersion() *string {
 		return (*string)(&vt.SDKVersion)
 	} else if vt := u.OfSeekCompleted; vt != nil {
 		return (*string)(&vt.SDKVersion)
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		return (*string)(&vt.SDKVersion)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
+		return (*string)(&vt.SDKVersion)
 	}
 	return nil
 }
@@ -1192,6 +1385,10 @@ func (u AnalyticsEventUnionParam) GetSeekCount() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.SeekCount.Valid() {
 		return &vt.SeekCount.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.SeekCount.Valid() {
+		return &vt.SeekCount.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.SeekCount.Valid() {
+		return &vt.SeekCount.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.SeekCount.Valid() {
 		return &vt.SeekCount.Value
 	}
 	return nil
@@ -1213,6 +1410,10 @@ func (u AnalyticsEventUnionParam) GetSeekDurationMs() *float64 {
 		return &vt.SeekDurationMs.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.SeekDurationMs.Valid() {
 		return &vt.SeekDurationMs.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.SeekDurationMs.Valid() {
+		return &vt.SeekDurationMs.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.SeekDurationMs.Valid() {
+		return &vt.SeekDurationMs.Value
 	}
 	return nil
 }
@@ -1232,6 +1433,10 @@ func (u AnalyticsEventUnionParam) GetSelectedRenditionBitrateBps() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.SelectedRenditionBitrateBps.Valid() {
 		return &vt.SelectedRenditionBitrateBps.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.SelectedRenditionBitrateBps.Valid() {
+		return &vt.SelectedRenditionBitrateBps.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.SelectedRenditionBitrateBps.Valid() {
+		return &vt.SelectedRenditionBitrateBps.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.SelectedRenditionBitrateBps.Valid() {
 		return &vt.SelectedRenditionBitrateBps.Value
 	}
 	return nil
@@ -1253,6 +1458,10 @@ func (u AnalyticsEventUnionParam) GetSelectedRenditionCodec() *string {
 		return &vt.SelectedRenditionCodec.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.SelectedRenditionCodec.Valid() {
 		return &vt.SelectedRenditionCodec.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.SelectedRenditionCodec.Valid() {
+		return &vt.SelectedRenditionCodec.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.SelectedRenditionCodec.Valid() {
+		return &vt.SelectedRenditionCodec.Value
 	}
 	return nil
 }
@@ -1272,6 +1481,10 @@ func (u AnalyticsEventUnionParam) GetSelectedRenditionHeight() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.SelectedRenditionHeight.Valid() {
 		return &vt.SelectedRenditionHeight.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.SelectedRenditionHeight.Valid() {
+		return &vt.SelectedRenditionHeight.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.SelectedRenditionHeight.Valid() {
+		return &vt.SelectedRenditionHeight.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.SelectedRenditionHeight.Valid() {
 		return &vt.SelectedRenditionHeight.Value
 	}
 	return nil
@@ -1293,6 +1506,10 @@ func (u AnalyticsEventUnionParam) GetSelectedRenditionWidth() *float64 {
 		return &vt.SelectedRenditionWidth.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.SelectedRenditionWidth.Valid() {
 		return &vt.SelectedRenditionWidth.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.SelectedRenditionWidth.Valid() {
+		return &vt.SelectedRenditionWidth.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.SelectedRenditionWidth.Valid() {
+		return &vt.SelectedRenditionWidth.Value
 	}
 	return nil
 }
@@ -1312,6 +1529,10 @@ func (u AnalyticsEventUnionParam) GetSequence() *int64 {
 	} else if vt := u.OfRenditionChanged; vt != nil {
 		return (*int64)(&vt.Sequence)
 	} else if vt := u.OfSeekCompleted; vt != nil {
+		return (*int64)(&vt.Sequence)
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		return (*int64)(&vt.Sequence)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
 		return (*int64)(&vt.Sequence)
 	}
 	return nil
@@ -1333,6 +1554,10 @@ func (u AnalyticsEventUnionParam) GetStartupOutcome() *string {
 		return (*string)(&vt.StartupOutcome.Value)
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.StartupOutcome.Valid() {
 		return (*string)(&vt.StartupOutcome.Value)
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.StartupOutcome.Valid() {
+		return (*string)(&vt.StartupOutcome.Value)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.StartupOutcome.Valid() {
+		return (*string)(&vt.StartupOutcome.Value)
 	}
 	return nil
 }
@@ -1352,6 +1577,10 @@ func (u AnalyticsEventUnionParam) GetStartupTimeMs() *float64 {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.StartupTimeMs.Valid() {
 		return &vt.StartupTimeMs.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.StartupTimeMs.Valid() {
+		return &vt.StartupTimeMs.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.StartupTimeMs.Valid() {
+		return &vt.StartupTimeMs.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.StartupTimeMs.Valid() {
 		return &vt.StartupTimeMs.Value
 	}
 	return nil
@@ -1373,6 +1602,10 @@ func (u AnalyticsEventUnionParam) GetTotalVideoFrames() *float64 {
 		return &vt.TotalVideoFrames.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.TotalVideoFrames.Valid() {
 		return &vt.TotalVideoFrames.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.TotalVideoFrames.Valid() {
+		return &vt.TotalVideoFrames.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.TotalVideoFrames.Valid() {
+		return &vt.TotalVideoFrames.Value
 	}
 	return nil
 }
@@ -1392,6 +1625,10 @@ func (u AnalyticsEventUnionParam) GetVideoID() *string {
 	} else if vt := u.OfRenditionChanged; vt != nil {
 		return (*string)(&vt.VideoID)
 	} else if vt := u.OfSeekCompleted; vt != nil {
+		return (*string)(&vt.VideoID)
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		return (*string)(&vt.VideoID)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
 		return (*string)(&vt.VideoID)
 	}
 	return nil
@@ -1413,6 +1650,10 @@ func (u AnalyticsEventUnionParam) GetViewID() *string {
 		return (*string)(&vt.ViewID)
 	} else if vt := u.OfSeekCompleted; vt != nil {
 		return (*string)(&vt.ViewID)
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		return (*string)(&vt.ViewID)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
+		return (*string)(&vt.ViewID)
 	}
 	return nil
 }
@@ -1433,6 +1674,26 @@ func (u AnalyticsEventUnionParam) GetViewerID() *string {
 		return &vt.ViewerID.Value
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.ViewerID.Valid() {
 		return &vt.ViewerID.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.ViewerID.Valid() {
+		return &vt.ViewerID.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.ViewerID.Valid() {
+		return &vt.ViewerID.Value
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u AnalyticsEventUnionParam) GetPlaybackRate() *float64 {
+	if vt := u.OfViewStarted; vt != nil && vt.PlaybackRate.Valid() {
+		return &vt.PlaybackRate.Value
+	} else if vt := u.OfViewSnapshot; vt != nil && vt.PlaybackRate.Valid() {
+		return &vt.PlaybackRate.Value
+	} else if vt := u.OfPlaybackError; vt != nil && vt.PlaybackRate.Valid() {
+		return &vt.PlaybackRate.Value
+	} else if vt := u.OfViewEnded; vt != nil && vt.PlaybackRate.Valid() {
+		return &vt.PlaybackRate.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.PlaybackRate.Valid() {
+		return &vt.PlaybackRate.Value
 	}
 	return nil
 }
@@ -1451,6 +1712,74 @@ func (u AnalyticsEventUnionParam) GetPlayheadSeconds() *float64 {
 		return &vt.PlayheadSeconds.Value
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.PlayheadSeconds.Valid() {
 		return &vt.PlayheadSeconds.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.PlayheadSeconds.Valid() {
+		return &vt.PlayheadSeconds.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.PlayheadSeconds.Valid() {
+		return &vt.PlayheadSeconds.Value
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u AnalyticsEventUnionParam) GetSubtitleLanguage() *string {
+	if vt := u.OfViewStarted; vt != nil && vt.SubtitleLanguage.Valid() {
+		return &vt.SubtitleLanguage.Value
+	} else if vt := u.OfViewSnapshot; vt != nil && vt.SubtitleLanguage.Valid() {
+		return &vt.SubtitleLanguage.Value
+	} else if vt := u.OfPlaybackError; vt != nil && vt.SubtitleLanguage.Valid() {
+		return &vt.SubtitleLanguage.Value
+	} else if vt := u.OfViewEnded; vt != nil && vt.SubtitleLanguage.Valid() {
+		return &vt.SubtitleLanguage.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.SubtitleLanguage.Valid() {
+		return &vt.SubtitleLanguage.Value
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u AnalyticsEventUnionParam) GetUserID() *string {
+	if vt := u.OfViewStarted; vt != nil && vt.UserID.Valid() {
+		return &vt.UserID.Value
+	} else if vt := u.OfViewSnapshot; vt != nil && vt.UserID.Valid() {
+		return &vt.UserID.Value
+	} else if vt := u.OfPlaybackError; vt != nil && vt.UserID.Valid() {
+		return &vt.UserID.Value
+	} else if vt := u.OfViewEnded; vt != nil && vt.UserID.Valid() {
+		return &vt.UserID.Value
+	} else if vt := u.OfPlaybackStateChanged; vt != nil && vt.UserID.Valid() {
+		return &vt.UserID.Value
+	} else if vt := u.OfRenditionChanged; vt != nil && vt.UserID.Valid() {
+		return &vt.UserID.Value
+	} else if vt := u.OfSeekCompleted; vt != nil && vt.UserID.Valid() {
+		return &vt.UserID.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.UserID.Valid() {
+		return &vt.UserID.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.UserID.Valid() {
+		return &vt.UserID.Value
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u AnalyticsEventUnionParam) GetVideoTitle() *string {
+	if vt := u.OfViewStarted; vt != nil && vt.VideoTitle.Valid() {
+		return &vt.VideoTitle.Value
+	} else if vt := u.OfViewSnapshot; vt != nil && vt.VideoTitle.Valid() {
+		return &vt.VideoTitle.Value
+	} else if vt := u.OfPlaybackError; vt != nil && vt.VideoTitle.Valid() {
+		return &vt.VideoTitle.Value
+	} else if vt := u.OfViewEnded; vt != nil && vt.VideoTitle.Valid() {
+		return &vt.VideoTitle.Value
+	} else if vt := u.OfPlaybackStateChanged; vt != nil && vt.VideoTitle.Valid() {
+		return &vt.VideoTitle.Value
+	} else if vt := u.OfRenditionChanged; vt != nil && vt.VideoTitle.Valid() {
+		return &vt.VideoTitle.Value
+	} else if vt := u.OfSeekCompleted; vt != nil && vt.VideoTitle.Valid() {
+		return &vt.VideoTitle.Value
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.VideoTitle.Valid() {
+		return &vt.VideoTitle.Value
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.VideoTitle.Valid() {
+		return &vt.VideoTitle.Value
 	}
 	return nil
 }
@@ -1470,6 +1799,10 @@ func (u AnalyticsEventUnionParam) GetVisibilityState() *string {
 	} else if vt := u.OfRenditionChanged; vt != nil && vt.VisibilityState.Valid() {
 		return (*string)(&vt.VisibilityState.Value)
 	} else if vt := u.OfSeekCompleted; vt != nil && vt.VisibilityState.Valid() {
+		return (*string)(&vt.VisibilityState.Value)
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.VisibilityState.Valid() {
+		return (*string)(&vt.VisibilityState.Value)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.VisibilityState.Valid() {
 		return (*string)(&vt.VisibilityState.Value)
 	}
 	return nil
@@ -1492,6 +1825,10 @@ func (u AnalyticsEventUnionParam) GetErrorCode() (res analyticsEventUnionParamEr
 	} else if vt := u.OfRenditionChanged; vt != nil {
 		res.any = vt.ErrorCode.asAny()
 	} else if vt := u.OfSeekCompleted; vt != nil {
+		res.any = vt.ErrorCode.asAny()
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		res.any = vt.ErrorCode.asAny()
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
 		res.any = vt.ErrorCode.asAny()
 	}
 	return
@@ -1526,6 +1863,10 @@ func (u AnalyticsEventUnionParam) GetOccurredAt() *time.Time {
 		return &vt.OccurredAt
 	} else if vt := u.OfSeekCompleted; vt != nil {
 		return &vt.OccurredAt
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		return &vt.OccurredAt
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
+		return &vt.OccurredAt
 	}
 	return nil
 }
@@ -1546,6 +1887,10 @@ func (u AnalyticsEventUnionParam) GetRenditionPlayingTime() []shared.RenditionPl
 	} else if vt := u.OfRenditionChanged; vt != nil {
 		return vt.RenditionPlayingTime
 	} else if vt := u.OfSeekCompleted; vt != nil {
+		return vt.RenditionPlayingTime
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		return vt.RenditionPlayingTime
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
 		return vt.RenditionPlayingTime
 	}
 	return nil
@@ -1568,6 +1913,25 @@ func (u AnalyticsEventUnionParam) GetBrowserContext() *any {
 		return &vt.BrowserContext
 	} else if vt := u.OfSeekCompleted; vt != nil {
 		return &vt.BrowserContext
+	} else if vt := u.OfSubtitleChanged; vt != nil {
+		return &vt.BrowserContext
+	} else if vt := u.OfPlaybackRateChanged; vt != nil {
+		return &vt.BrowserContext
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's PlaybackRatePlayingTime property,
+// if present.
+func (u AnalyticsEventUnionParam) GetPlaybackRatePlayingTime() []shared.PlaybackRatePlayingTimeParam {
+	if vt := u.OfViewStarted; vt != nil {
+		return vt.PlaybackRatePlayingTime
+	} else if vt := u.OfViewSnapshot; vt != nil {
+		return vt.PlaybackRatePlayingTime
+	} else if vt := u.OfPlaybackError; vt != nil {
+		return vt.PlaybackRatePlayingTime
+	} else if vt := u.OfViewEnded; vt != nil {
+		return vt.PlaybackRatePlayingTime
 	}
 	return nil
 }
@@ -1582,6 +1946,21 @@ func (u AnalyticsEventUnionParam) GetPlayedRanges() []shared.PlayedRangeParam {
 		return vt.PlayedRanges
 	} else if vt := u.OfViewEnded; vt != nil {
 		return vt.PlayedRanges
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's SubtitlePlayingTime property, if
+// present.
+func (u AnalyticsEventUnionParam) GetSubtitlePlayingTime() []shared.SubtitlePlayingTimeParam {
+	if vt := u.OfViewStarted; vt != nil {
+		return vt.SubtitlePlayingTime
+	} else if vt := u.OfViewSnapshot; vt != nil {
+		return vt.SubtitlePlayingTime
+	} else if vt := u.OfPlaybackError; vt != nil {
+		return vt.SubtitlePlayingTime
+	} else if vt := u.OfViewEnded; vt != nil {
+		return vt.SubtitlePlayingTime
 	}
 	return nil
 }
@@ -1693,9 +2072,17 @@ type PlaybackError struct {
 	TotalVideoFrames float64                     `json:"total_video_frames" api:"required"`
 	VideoID          string                      `json:"video_id" api:"required"`
 	ViewID           string                      `json:"view_id" api:"required" format:"uuid"`
-	ViewerID         string                      `json:"viewer_id" api:"required"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID string `json:"viewer_id" api:"required"`
 	// Optional browser information supplied by the player.
 	BrowserContext any `json:"browser_context"`
+	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
+	// to 16. Optional.
+	PlaybackRate float64 `json:"playback_rate" api:"nullable"`
+	// Cumulative playing time per playback rate for this attempt. At most 32 entries.
+	// Optional.
+	PlaybackRatePlayingTime []shared.PlaybackRatePlayingTime `json:"playback_rate_playing_time" api:"nullable"`
 	// Cumulative played media ranges for this attempt, sorted and merged without
 	// overlaps. Seeking, pauses and buffering are excluded. Missing or null means
 	// unavailable; an empty array means measured but no section played. Replaying a
@@ -1703,6 +2090,17 @@ type PlaybackError struct {
 	PlayedRanges []shared.PlayedRange `json:"played_ranges" api:"nullable"`
 	// Current media position at this event, not the maximum reached.
 	PlayheadSeconds float64 `json:"playhead_seconds" api:"nullable"`
+	// Language tag (BCP 47) of the showing subtitles or captions track; und when the
+	// track declares no language; null when subtitles are off. Optional.
+	SubtitleLanguage string `json:"subtitle_language" api:"nullable"`
+	// Cumulative playing time per subtitle language for this attempt, null language
+	// meaning subtitles off. At most 32 entries. Optional.
+	SubtitlePlayingTime []shared.SubtitlePlayingTime `json:"subtitle_playing_time" api:"nullable"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID string `json:"user_id" api:"nullable"`
+	// Optional human-readable video title for reports.
+	VideoTitle string `json:"video_title" api:"nullable"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
@@ -1760,8 +2158,14 @@ type PlaybackError struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		PlaybackRate                respjson.Field
+		PlaybackRatePlayingTime     respjson.Field
 		PlayedRanges                respjson.Field
 		PlayheadSeconds             respjson.Field
+		SubtitleLanguage            respjson.Field
+		SubtitlePlayingTime         respjson.Field
+		UserID                      respjson.Field
+		VideoTitle                  respjson.Field
 		VisibilityState             respjson.Field
 		ExtraFields                 map[string]respjson.Field
 		raw                         string
@@ -1898,19 +2302,21 @@ type PlaybackErrorParam struct {
 	SelectedRenditionHeight     param.Opt[float64]             `json:"selected_rendition_height,omitzero" api:"required"`
 	SelectedRenditionWidth      param.Opt[float64]             `json:"selected_rendition_width,omitzero" api:"required"`
 	// Any of "started", "failed_before_start", "ended_before_start".
-	StartupOutcome         param.Opt[PlaybackErrorStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
-	StartupTimeMs          param.Opt[float64]                     `json:"startup_time_ms,omitzero" api:"required"`
-	TotalVideoFrames       param.Opt[float64]                     `json:"total_video_frames,omitzero" api:"required"`
-	ViewerID               param.Opt[string]                      `json:"viewer_id,omitzero" api:"required"`
-	ErrorCode              PlaybackErrorErrorCodeUnionParam       `json:"error_code,omitzero" api:"required"`
-	RenditionPlayingTime   []shared.RenditionPlayingTimeParam     `json:"rendition_playing_time,omitzero" api:"required"`
-	ConnectorName          string                                 `json:"connector_name" api:"required"`
-	EventID                string                                 `json:"event_id" api:"required" format:"uuid"`
-	MaximumPlayheadSeconds float64                                `json:"maximum_playhead_seconds" api:"required"`
-	OccurredAt             time.Time                              `json:"occurred_at" api:"required" format:"date-time"`
-	PlayingTimeMs          float64                                `json:"playing_time_ms" api:"required"`
-	RebufferCount          float64                                `json:"rebuffer_count" api:"required"`
-	RebufferDurationMs     float64                                `json:"rebuffer_duration_ms" api:"required"`
+	StartupOutcome   param.Opt[PlaybackErrorStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
+	StartupTimeMs    param.Opt[float64]                     `json:"startup_time_ms,omitzero" api:"required"`
+	TotalVideoFrames param.Opt[float64]                     `json:"total_video_frames,omitzero" api:"required"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID               param.Opt[string]                  `json:"viewer_id,omitzero" api:"required"`
+	ErrorCode              PlaybackErrorErrorCodeUnionParam   `json:"error_code,omitzero" api:"required"`
+	RenditionPlayingTime   []shared.RenditionPlayingTimeParam `json:"rendition_playing_time,omitzero" api:"required"`
+	ConnectorName          string                             `json:"connector_name" api:"required"`
+	EventID                string                             `json:"event_id" api:"required" format:"uuid"`
+	MaximumPlayheadSeconds float64                            `json:"maximum_playhead_seconds" api:"required"`
+	OccurredAt             time.Time                          `json:"occurred_at" api:"required" format:"date-time"`
+	PlayingTimeMs          float64                            `json:"playing_time_ms" api:"required"`
+	RebufferCount          float64                            `json:"rebuffer_count" api:"required"`
+	RebufferDurationMs     float64                            `json:"rebuffer_duration_ms" api:"required"`
 	// Name of the SDK or integration that produced the event. Informational metadata,
 	// preserved as received. Must contain at least one non-whitespace character.
 	SDKName        string  `json:"sdk_name" api:"required"`
@@ -1920,19 +2326,36 @@ type PlaybackErrorParam struct {
 	Sequence       int64   `json:"sequence" api:"required"`
 	VideoID        string  `json:"video_id" api:"required"`
 	ViewID         string  `json:"view_id" api:"required" format:"uuid"`
+	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
+	// to 16. Optional.
+	PlaybackRate param.Opt[float64] `json:"playback_rate,omitzero"`
 	// Current media position at this event, not the maximum reached.
 	PlayheadSeconds param.Opt[float64] `json:"playhead_seconds,omitzero"`
+	// Language tag (BCP 47) of the showing subtitles or captions track; und when the
+	// track declares no language; null when subtitles are off. Optional.
+	SubtitleLanguage param.Opt[string] `json:"subtitle_language,omitzero"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID param.Opt[string] `json:"user_id,omitzero"`
+	// Optional human-readable video title for reports.
+	VideoTitle param.Opt[string] `json:"video_title,omitzero"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
 	//
 	// Any of "visible", "hidden".
 	VisibilityState param.Opt[PlaybackErrorVisibilityState] `json:"visibility_state,omitzero"`
+	// Cumulative playing time per playback rate for this attempt. At most 32 entries.
+	// Optional.
+	PlaybackRatePlayingTime []shared.PlaybackRatePlayingTimeParam `json:"playback_rate_playing_time,omitzero"`
 	// Cumulative played media ranges for this attempt, sorted and merged without
 	// overlaps. Seeking, pauses and buffering are excluded. Missing or null means
 	// unavailable; an empty array means measured but no section played. Replaying a
 	// section does not add another range.
 	PlayedRanges []shared.PlayedRangeParam `json:"played_ranges,omitzero"`
+	// Cumulative playing time per subtitle language for this attempt, null language
+	// meaning subtitles off. At most 32 entries. Optional.
+	SubtitlePlayingTime []shared.SubtitlePlayingTimeParam `json:"subtitle_playing_time,omitzero"`
 	// Optional browser information supplied by the player.
 	BrowserContext any `json:"browser_context,omitzero"`
 	// This field can be elided, and will marshal its zero value as
@@ -1982,6 +2405,354 @@ func (u *PlaybackErrorErrorCodeUnionParam) asAny() any {
 	return nil
 }
 
+type PlaybackRateChanged struct {
+	ConnectorName    string `json:"connector_name" api:"required"`
+	ConnectorVersion string `json:"connector_version" api:"required"`
+	DeliveryHostname string `json:"delivery_hostname" api:"required"`
+	Environment      string `json:"environment" api:"required"`
+	// Any of "aborted", "network", "decode", "unsupported", "unknown".
+	ErrorCategory        PlaybackRateChangedErrorCategory          `json:"error_category" api:"required"`
+	ErrorCode            PlaybackRateChangedErrorCodeUnion         `json:"error_code" api:"required"`
+	ErrorFatal           bool                                      `json:"error_fatal" api:"required"`
+	ErrorPlayheadSeconds float64                                   `json:"error_playhead_seconds" api:"required"`
+	EventID              string                                    `json:"event_id" api:"required" format:"uuid"`
+	EventName            constant.ChunkifyVideoPlaybackRateChanged `json:"event_name" default:"chunkify.video.playback_rate_changed"`
+	OccurredAt           time.Time                                 `json:"occurred_at" api:"required" format:"date-time"`
+	// Rate after the change.
+	PlaybackRate    float64 `json:"playback_rate" api:"required"`
+	PlayerName      string  `json:"player_name" api:"required"`
+	PlayerVersion   string  `json:"player_version" api:"required"`
+	PlayheadSeconds float64 `json:"playhead_seconds" api:"required"`
+	// Rate before the change.
+	PreviousPlaybackRate float64 `json:"previous_playback_rate" api:"required"`
+	// Any of "ended", "destroyed", "source_changed", "page_exit".
+	Reason        PlaybackRateChangedReason `json:"reason" api:"required"`
+	SchemaVersion float64                   `json:"schema_version" api:"required"`
+	// Name of the SDK or integration that produced the event. Informational metadata,
+	// preserved as received. Must contain at least one non-whitespace character.
+	SDKName    string `json:"sdk_name" api:"required"`
+	SDKVersion string `json:"sdk_version" api:"required"`
+	Sequence   int64  `json:"sequence" api:"required"`
+	// Any of "started", "failed_before_start", "ended_before_start".
+	StartupOutcome PlaybackRateChangedStartupOutcome `json:"startup_outcome" api:"required"`
+	VideoID        string                            `json:"video_id" api:"required"`
+	ViewID         string                            `json:"view_id" api:"required" format:"uuid"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID string `json:"viewer_id" api:"required"`
+	// Optional browser information supplied by the player.
+	BrowserContext              any                           `json:"browser_context"`
+	DeliveryRequestCount        float64                       `json:"delivery_request_count" api:"nullable"`
+	DeliveryThroughputBps       float64                       `json:"delivery_throughput_bps" api:"nullable"`
+	DeliveryTransferredBytes    float64                       `json:"delivery_transferred_bytes" api:"nullable"`
+	DroppedVideoFrames          float64                       `json:"dropped_video_frames" api:"nullable"`
+	FirstVideoFrameTimeMs       float64                       `json:"first_video_frame_time_ms" api:"nullable"`
+	FurthestProgressRatio       float64                       `json:"furthest_progress_ratio" api:"nullable"`
+	MaximumPlayheadSeconds      float64                       `json:"maximum_playhead_seconds"`
+	MediaDurationSeconds        float64                       `json:"media_duration_seconds" api:"nullable"`
+	MediaHeightPx               float64                       `json:"media_height_px" api:"nullable"`
+	MediaWidthPx                float64                       `json:"media_width_px" api:"nullable"`
+	PlayerHeightPx              float64                       `json:"player_height_px" api:"nullable"`
+	PlayerWidthPx               float64                       `json:"player_width_px" api:"nullable"`
+	PlayingTimeMs               float64                       `json:"playing_time_ms"`
+	RebufferCount               float64                       `json:"rebuffer_count"`
+	RebufferDurationMs          float64                       `json:"rebuffer_duration_ms"`
+	RebufferRatio               float64                       `json:"rebuffer_ratio" api:"nullable"`
+	RenditionPlayingTime        []shared.RenditionPlayingTime `json:"rendition_playing_time" api:"nullable"`
+	RenditionSwitchCount        float64                       `json:"rendition_switch_count" api:"nullable"`
+	SeekCount                   float64                       `json:"seek_count"`
+	SeekDurationMs              float64                       `json:"seek_duration_ms"`
+	SelectedRenditionBitrateBps float64                       `json:"selected_rendition_bitrate_bps" api:"nullable"`
+	SelectedRenditionCodec      string                        `json:"selected_rendition_codec" api:"nullable"`
+	SelectedRenditionHeight     float64                       `json:"selected_rendition_height" api:"nullable"`
+	SelectedRenditionWidth      float64                       `json:"selected_rendition_width" api:"nullable"`
+	StartupTimeMs               float64                       `json:"startup_time_ms" api:"nullable"`
+	TotalVideoFrames            float64                       `json:"total_video_frames" api:"nullable"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID string `json:"user_id" api:"nullable"`
+	// Optional human-readable video title for reports.
+	VideoTitle string `json:"video_title" api:"nullable"`
+	// Tab visibility when the event was recorded. Hidden does not imply paused
+	// playback or identify the cause of a pause. Missing on older events; null when
+	// unavailable.
+	//
+	// Any of "visible", "hidden".
+	VisibilityState PlaybackRateChangedVisibilityState `json:"visibility_state" api:"nullable"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ConnectorName               respjson.Field
+		ConnectorVersion            respjson.Field
+		DeliveryHostname            respjson.Field
+		Environment                 respjson.Field
+		ErrorCategory               respjson.Field
+		ErrorCode                   respjson.Field
+		ErrorFatal                  respjson.Field
+		ErrorPlayheadSeconds        respjson.Field
+		EventID                     respjson.Field
+		EventName                   respjson.Field
+		OccurredAt                  respjson.Field
+		PlaybackRate                respjson.Field
+		PlayerName                  respjson.Field
+		PlayerVersion               respjson.Field
+		PlayheadSeconds             respjson.Field
+		PreviousPlaybackRate        respjson.Field
+		Reason                      respjson.Field
+		SchemaVersion               respjson.Field
+		SDKName                     respjson.Field
+		SDKVersion                  respjson.Field
+		Sequence                    respjson.Field
+		StartupOutcome              respjson.Field
+		VideoID                     respjson.Field
+		ViewID                      respjson.Field
+		ViewerID                    respjson.Field
+		BrowserContext              respjson.Field
+		DeliveryRequestCount        respjson.Field
+		DeliveryThroughputBps       respjson.Field
+		DeliveryTransferredBytes    respjson.Field
+		DroppedVideoFrames          respjson.Field
+		FirstVideoFrameTimeMs       respjson.Field
+		FurthestProgressRatio       respjson.Field
+		MaximumPlayheadSeconds      respjson.Field
+		MediaDurationSeconds        respjson.Field
+		MediaHeightPx               respjson.Field
+		MediaWidthPx                respjson.Field
+		PlayerHeightPx              respjson.Field
+		PlayerWidthPx               respjson.Field
+		PlayingTimeMs               respjson.Field
+		RebufferCount               respjson.Field
+		RebufferDurationMs          respjson.Field
+		RebufferRatio               respjson.Field
+		RenditionPlayingTime        respjson.Field
+		RenditionSwitchCount        respjson.Field
+		SeekCount                   respjson.Field
+		SeekDurationMs              respjson.Field
+		SelectedRenditionBitrateBps respjson.Field
+		SelectedRenditionCodec      respjson.Field
+		SelectedRenditionHeight     respjson.Field
+		SelectedRenditionWidth      respjson.Field
+		StartupTimeMs               respjson.Field
+		TotalVideoFrames            respjson.Field
+		UserID                      respjson.Field
+		VideoTitle                  respjson.Field
+		VisibilityState             respjson.Field
+		ExtraFields                 map[string]respjson.Field
+		raw                         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r PlaybackRateChanged) RawJSON() string { return r.JSON.raw }
+func (r *PlaybackRateChanged) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// ToParam converts this PlaybackRateChanged to a PlaybackRateChangedParam.
+//
+// Warning: the fields of the param type will not be present. ToParam should only
+// be used at the last possible moment before sending a request. Test for this with
+// PlaybackRateChangedParam.Overrides()
+func (r PlaybackRateChanged) ToParam() PlaybackRateChangedParam {
+	return param.Override[PlaybackRateChangedParam](json.RawMessage(r.RawJSON()))
+}
+
+type PlaybackRateChangedErrorCategory string
+
+const (
+	PlaybackRateChangedErrorCategoryAborted     PlaybackRateChangedErrorCategory = "aborted"
+	PlaybackRateChangedErrorCategoryNetwork     PlaybackRateChangedErrorCategory = "network"
+	PlaybackRateChangedErrorCategoryDecode      PlaybackRateChangedErrorCategory = "decode"
+	PlaybackRateChangedErrorCategoryUnsupported PlaybackRateChangedErrorCategory = "unsupported"
+	PlaybackRateChangedErrorCategoryUnknown     PlaybackRateChangedErrorCategory = "unknown"
+)
+
+// PlaybackRateChangedErrorCodeUnion contains all possible properties and values
+// from [string], [float64].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfFloat]
+type PlaybackRateChangedErrorCodeUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [float64] instead of an object.
+	OfFloat float64 `json:",inline"`
+	JSON    struct {
+		OfString respjson.Field
+		OfFloat  respjson.Field
+		raw      string
+	} `json:"-"`
+}
+
+func (u PlaybackRateChangedErrorCodeUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u PlaybackRateChangedErrorCodeUnion) AsFloat() (v float64) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u PlaybackRateChangedErrorCodeUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *PlaybackRateChangedErrorCodeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type PlaybackRateChangedReason string
+
+const (
+	PlaybackRateChangedReasonEnded         PlaybackRateChangedReason = "ended"
+	PlaybackRateChangedReasonDestroyed     PlaybackRateChangedReason = "destroyed"
+	PlaybackRateChangedReasonSourceChanged PlaybackRateChangedReason = "source_changed"
+	PlaybackRateChangedReasonPageExit      PlaybackRateChangedReason = "page_exit"
+)
+
+type PlaybackRateChangedStartupOutcome string
+
+const (
+	PlaybackRateChangedStartupOutcomeStarted           PlaybackRateChangedStartupOutcome = "started"
+	PlaybackRateChangedStartupOutcomeFailedBeforeStart PlaybackRateChangedStartupOutcome = "failed_before_start"
+	PlaybackRateChangedStartupOutcomeEndedBeforeStart  PlaybackRateChangedStartupOutcome = "ended_before_start"
+)
+
+// Tab visibility when the event was recorded. Hidden does not imply paused
+// playback or identify the cause of a pause. Missing on older events; null when
+// unavailable.
+type PlaybackRateChangedVisibilityState string
+
+const (
+	PlaybackRateChangedVisibilityStateVisible PlaybackRateChangedVisibilityState = "visible"
+	PlaybackRateChangedVisibilityStateHidden  PlaybackRateChangedVisibilityState = "hidden"
+)
+
+// The properties ConnectorName, ConnectorVersion, DeliveryHostname, Environment,
+// ErrorCategory, ErrorCode, ErrorFatal, ErrorPlayheadSeconds, EventID, EventName,
+// OccurredAt, PlaybackRate, PlayerName, PlayerVersion, PlayheadSeconds,
+// PreviousPlaybackRate, Reason, SchemaVersion, SDKName, SDKVersion, Sequence,
+// StartupOutcome, VideoID, ViewID, ViewerID are required.
+type PlaybackRateChangedParam struct {
+	ConnectorVersion param.Opt[string] `json:"connector_version,omitzero" api:"required"`
+	DeliveryHostname param.Opt[string] `json:"delivery_hostname,omitzero" api:"required"`
+	Environment      param.Opt[string] `json:"environment,omitzero" api:"required"`
+	// Any of "aborted", "network", "decode", "unsupported", "unknown".
+	ErrorCategory        param.Opt[PlaybackRateChangedErrorCategory] `json:"error_category,omitzero" api:"required"`
+	ErrorFatal           param.Opt[bool]                             `json:"error_fatal,omitzero" api:"required"`
+	ErrorPlayheadSeconds param.Opt[float64]                          `json:"error_playhead_seconds,omitzero" api:"required"`
+	// Rate after the change.
+	PlaybackRate    param.Opt[float64] `json:"playback_rate,omitzero" api:"required"`
+	PlayerName      param.Opt[string]  `json:"player_name,omitzero" api:"required"`
+	PlayerVersion   param.Opt[string]  `json:"player_version,omitzero" api:"required"`
+	PlayheadSeconds param.Opt[float64] `json:"playhead_seconds,omitzero" api:"required"`
+	// Rate before the change.
+	PreviousPlaybackRate param.Opt[float64] `json:"previous_playback_rate,omitzero" api:"required"`
+	// Any of "ended", "destroyed", "source_changed", "page_exit".
+	Reason param.Opt[PlaybackRateChangedReason] `json:"reason,omitzero" api:"required"`
+	// Any of "started", "failed_before_start", "ended_before_start".
+	StartupOutcome param.Opt[PlaybackRateChangedStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID      param.Opt[string]                      `json:"viewer_id,omitzero" api:"required"`
+	ErrorCode     PlaybackRateChangedErrorCodeUnionParam `json:"error_code,omitzero" api:"required"`
+	ConnectorName string                                 `json:"connector_name" api:"required"`
+	EventID       string                                 `json:"event_id" api:"required" format:"uuid"`
+	OccurredAt    time.Time                              `json:"occurred_at" api:"required" format:"date-time"`
+	// Name of the SDK or integration that produced the event. Informational metadata,
+	// preserved as received. Must contain at least one non-whitespace character.
+	SDKName                     string             `json:"sdk_name" api:"required"`
+	SDKVersion                  string             `json:"sdk_version" api:"required"`
+	Sequence                    int64              `json:"sequence" api:"required"`
+	VideoID                     string             `json:"video_id" api:"required"`
+	ViewID                      string             `json:"view_id" api:"required" format:"uuid"`
+	DeliveryRequestCount        param.Opt[float64] `json:"delivery_request_count,omitzero"`
+	DeliveryThroughputBps       param.Opt[float64] `json:"delivery_throughput_bps,omitzero"`
+	DeliveryTransferredBytes    param.Opt[float64] `json:"delivery_transferred_bytes,omitzero"`
+	DroppedVideoFrames          param.Opt[float64] `json:"dropped_video_frames,omitzero"`
+	FirstVideoFrameTimeMs       param.Opt[float64] `json:"first_video_frame_time_ms,omitzero"`
+	FurthestProgressRatio       param.Opt[float64] `json:"furthest_progress_ratio,omitzero"`
+	MediaDurationSeconds        param.Opt[float64] `json:"media_duration_seconds,omitzero"`
+	MediaHeightPx               param.Opt[float64] `json:"media_height_px,omitzero"`
+	MediaWidthPx                param.Opt[float64] `json:"media_width_px,omitzero"`
+	PlayerHeightPx              param.Opt[float64] `json:"player_height_px,omitzero"`
+	PlayerWidthPx               param.Opt[float64] `json:"player_width_px,omitzero"`
+	RebufferRatio               param.Opt[float64] `json:"rebuffer_ratio,omitzero"`
+	RenditionSwitchCount        param.Opt[float64] `json:"rendition_switch_count,omitzero"`
+	SelectedRenditionBitrateBps param.Opt[float64] `json:"selected_rendition_bitrate_bps,omitzero"`
+	SelectedRenditionCodec      param.Opt[string]  `json:"selected_rendition_codec,omitzero"`
+	SelectedRenditionHeight     param.Opt[float64] `json:"selected_rendition_height,omitzero"`
+	SelectedRenditionWidth      param.Opt[float64] `json:"selected_rendition_width,omitzero"`
+	StartupTimeMs               param.Opt[float64] `json:"startup_time_ms,omitzero"`
+	TotalVideoFrames            param.Opt[float64] `json:"total_video_frames,omitzero"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID param.Opt[string] `json:"user_id,omitzero"`
+	// Optional human-readable video title for reports.
+	VideoTitle param.Opt[string] `json:"video_title,omitzero"`
+	// Tab visibility when the event was recorded. Hidden does not imply paused
+	// playback or identify the cause of a pause. Missing on older events; null when
+	// unavailable.
+	//
+	// Any of "visible", "hidden".
+	VisibilityState        param.Opt[PlaybackRateChangedVisibilityState] `json:"visibility_state,omitzero"`
+	MaximumPlayheadSeconds param.Opt[float64]                            `json:"maximum_playhead_seconds,omitzero"`
+	PlayingTimeMs          param.Opt[float64]                            `json:"playing_time_ms,omitzero"`
+	RebufferCount          param.Opt[float64]                            `json:"rebuffer_count,omitzero"`
+	RebufferDurationMs     param.Opt[float64]                            `json:"rebuffer_duration_ms,omitzero"`
+	SeekCount              param.Opt[float64]                            `json:"seek_count,omitzero"`
+	SeekDurationMs         param.Opt[float64]                            `json:"seek_duration_ms,omitzero"`
+	RenditionPlayingTime   []shared.RenditionPlayingTimeParam            `json:"rendition_playing_time,omitzero"`
+	// Optional browser information supplied by the player.
+	BrowserContext any `json:"browser_context,omitzero"`
+	// This field can be elided, and will marshal its zero value as
+	// "chunkify.video.playback_rate_changed".
+	EventName constant.ChunkifyVideoPlaybackRateChanged `json:"event_name" default:"chunkify.video.playback_rate_changed"`
+	// This field can be elided, and will marshal its zero value as 1.
+	SchemaVersion float64 `json:"schema_version,omitzero" api:"required"`
+	paramObj
+}
+
+func (r PlaybackRateChangedParam) MarshalJSON() (data []byte, err error) {
+	type shadow PlaybackRateChangedParam
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *PlaybackRateChangedParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[PlaybackRateChangedParam](
+		"schema_version", 1,
+	)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type PlaybackRateChangedErrorCodeUnionParam struct {
+	OfString param.Opt[string]  `json:",omitzero,inline"`
+	OfFloat  param.Opt[float64] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u PlaybackRateChangedErrorCodeUnionParam) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfString, u.OfFloat)
+}
+func (u *PlaybackRateChangedErrorCodeUnionParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func (u *PlaybackRateChangedErrorCodeUnionParam) asAny() any {
+	if !param.IsOmitted(u.OfString) {
+		return &u.OfString.Value
+	} else if !param.IsOmitted(u.OfFloat) {
+		return &u.OfFloat.Value
+	}
+	return nil
+}
+
 type PlaybackStateChanged struct {
 	ConnectorName    string `json:"connector_name" api:"required"`
 	ConnectorVersion string `json:"connector_version" api:"required"`
@@ -2014,10 +2785,12 @@ type PlaybackStateChanged struct {
 	StartupOutcome PlaybackStateChangedStartupOutcome `json:"startup_outcome" api:"required"`
 	// Any of "startup", "resuming", "playing", "paused", "buffering", "seeking",
 	// "error", "ended", "stopped".
-	ToState  PlaybackStateChangedToState `json:"to_state" api:"required"`
-	VideoID  string                      `json:"video_id" api:"required"`
-	ViewID   string                      `json:"view_id" api:"required" format:"uuid"`
-	ViewerID string                      `json:"viewer_id" api:"required"`
+	ToState PlaybackStateChangedToState `json:"to_state" api:"required"`
+	VideoID string                      `json:"video_id" api:"required"`
+	ViewID  string                      `json:"view_id" api:"required" format:"uuid"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID string `json:"viewer_id" api:"required"`
 	// Optional browser information supplied by the player.
 	BrowserContext              any                           `json:"browser_context"`
 	DeliveryRequestCount        float64                       `json:"delivery_request_count" api:"nullable"`
@@ -2046,6 +2819,11 @@ type PlaybackStateChanged struct {
 	SelectedRenditionWidth      float64                       `json:"selected_rendition_width" api:"nullable"`
 	StartupTimeMs               float64                       `json:"startup_time_ms" api:"nullable"`
 	TotalVideoFrames            float64                       `json:"total_video_frames" api:"nullable"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID string `json:"user_id" api:"nullable"`
+	// Optional human-readable video title for reports.
+	VideoTitle string `json:"video_title" api:"nullable"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
@@ -2107,6 +2885,8 @@ type PlaybackStateChanged struct {
 		SelectedRenditionWidth      respjson.Field
 		StartupTimeMs               respjson.Field
 		TotalVideoFrames            respjson.Field
+		UserID                      respjson.Field
+		VideoTitle                  respjson.Field
 		VisibilityState             respjson.Field
 		ExtraFields                 map[string]respjson.Field
 		raw                         string
@@ -2249,10 +3029,12 @@ type PlaybackStateChangedParam struct {
 	Reason param.Opt[PlaybackStateChangedReason] `json:"reason,omitzero" api:"required"`
 	// Any of "started", "failed_before_start", "ended_before_start".
 	StartupOutcome param.Opt[PlaybackStateChangedStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
-	ViewerID       param.Opt[string]                             `json:"viewer_id,omitzero" api:"required"`
-	ErrorCode      PlaybackStateChangedErrorCodeUnionParam       `json:"error_code,omitzero" api:"required"`
-	ConnectorName  string                                        `json:"connector_name" api:"required"`
-	EventID        string                                        `json:"event_id" api:"required" format:"uuid"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID      param.Opt[string]                       `json:"viewer_id,omitzero" api:"required"`
+	ErrorCode     PlaybackStateChangedErrorCodeUnionParam `json:"error_code,omitzero" api:"required"`
+	ConnectorName string                                  `json:"connector_name" api:"required"`
+	EventID       string                                  `json:"event_id" api:"required" format:"uuid"`
 	// Any of "startup", "resuming", "playing", "paused", "buffering", "seeking",
 	// "error", "ended", "stopped".
 	FromState               PlaybackStateChangedFromState `json:"from_state,omitzero" api:"required"`
@@ -2287,6 +3069,11 @@ type PlaybackStateChangedParam struct {
 	SelectedRenditionWidth      param.Opt[float64]          `json:"selected_rendition_width,omitzero"`
 	StartupTimeMs               param.Opt[float64]          `json:"startup_time_ms,omitzero"`
 	TotalVideoFrames            param.Opt[float64]          `json:"total_video_frames,omitzero"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID param.Opt[string] `json:"user_id,omitzero"`
+	// Optional human-readable video title for reports.
+	VideoTitle param.Opt[string] `json:"video_title,omitzero"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
@@ -2389,7 +3176,9 @@ type RenditionChanged struct {
 	StartupOutcome RenditionChangedStartupOutcome `json:"startup_outcome" api:"required"`
 	VideoID        string                         `json:"video_id" api:"required"`
 	ViewID         string                         `json:"view_id" api:"required" format:"uuid"`
-	ViewerID       string                         `json:"viewer_id" api:"required"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID string `json:"viewer_id" api:"required"`
 	// Optional browser information supplied by the player.
 	BrowserContext           any                           `json:"browser_context"`
 	DeliveryRequestCount     float64                       `json:"delivery_request_count" api:"nullable"`
@@ -2412,6 +3201,11 @@ type RenditionChanged struct {
 	SeekDurationMs           float64                       `json:"seek_duration_ms"`
 	StartupTimeMs            float64                       `json:"startup_time_ms" api:"nullable"`
 	TotalVideoFrames         float64                       `json:"total_video_frames" api:"nullable"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID string `json:"user_id" api:"nullable"`
+	// Optional human-readable video title for reports.
+	VideoTitle string `json:"video_title" api:"nullable"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
@@ -2476,6 +3270,8 @@ type RenditionChanged struct {
 		SeekDurationMs              respjson.Field
 		StartupTimeMs               respjson.Field
 		TotalVideoFrames            respjson.Field
+		UserID                      respjson.Field
+		VideoTitle                  respjson.Field
 		VisibilityState             respjson.Field
 		ExtraFields                 map[string]respjson.Field
 		raw                         string
@@ -2606,11 +3402,13 @@ type RenditionChangedParam struct {
 	SelectedRenditionWidth      param.Opt[float64]                `json:"selected_rendition_width,omitzero" api:"required"`
 	// Any of "started", "failed_before_start", "ended_before_start".
 	StartupOutcome param.Opt[RenditionChangedStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
-	ViewerID       param.Opt[string]                         `json:"viewer_id,omitzero" api:"required"`
-	ErrorCode      RenditionChangedErrorCodeUnionParam       `json:"error_code,omitzero" api:"required"`
-	ConnectorName  string                                    `json:"connector_name" api:"required"`
-	EventID        string                                    `json:"event_id" api:"required" format:"uuid"`
-	OccurredAt     time.Time                                 `json:"occurred_at" api:"required" format:"date-time"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID      param.Opt[string]                   `json:"viewer_id,omitzero" api:"required"`
+	ErrorCode     RenditionChangedErrorCodeUnionParam `json:"error_code,omitzero" api:"required"`
+	ConnectorName string                              `json:"connector_name" api:"required"`
+	EventID       string                              `json:"event_id" api:"required" format:"uuid"`
+	OccurredAt    time.Time                           `json:"occurred_at" api:"required" format:"date-time"`
 	// Name of the SDK or integration that produced the event. Informational metadata,
 	// preserved as received. Must contain at least one non-whitespace character.
 	SDKName                  string             `json:"sdk_name" api:"required"`
@@ -2631,6 +3429,11 @@ type RenditionChangedParam struct {
 	RenditionSwitchCount     param.Opt[float64] `json:"rendition_switch_count,omitzero"`
 	StartupTimeMs            param.Opt[float64] `json:"startup_time_ms,omitzero"`
 	TotalVideoFrames         param.Opt[float64] `json:"total_video_frames,omitzero"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID param.Opt[string] `json:"user_id,omitzero"`
+	// Optional human-readable video title for reports.
+	VideoTitle param.Opt[string] `json:"video_title,omitzero"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
@@ -2735,7 +3538,9 @@ type SeekCompleted struct {
 	ToPlayheadSeconds float64                      `json:"to_playhead_seconds" api:"required"`
 	VideoID           string                       `json:"video_id" api:"required"`
 	ViewID            string                       `json:"view_id" api:"required" format:"uuid"`
-	ViewerID          string                       `json:"viewer_id" api:"required"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID string `json:"viewer_id" api:"required"`
 	// Optional browser information supplied by the player.
 	BrowserContext              any                           `json:"browser_context"`
 	DeliveryRequestCount        float64                       `json:"delivery_request_count" api:"nullable"`
@@ -2764,6 +3569,11 @@ type SeekCompleted struct {
 	SelectedRenditionWidth      float64                       `json:"selected_rendition_width" api:"nullable"`
 	StartupTimeMs               float64                       `json:"startup_time_ms" api:"nullable"`
 	TotalVideoFrames            float64                       `json:"total_video_frames" api:"nullable"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID string `json:"user_id" api:"nullable"`
+	// Optional human-readable video title for reports.
+	VideoTitle string `json:"video_title" api:"nullable"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
@@ -2831,6 +3641,8 @@ type SeekCompleted struct {
 		SelectedRenditionWidth      respjson.Field
 		StartupTimeMs               respjson.Field
 		TotalVideoFrames            respjson.Field
+		UserID                      respjson.Field
+		VideoTitle                  respjson.Field
 		VisibilityState             respjson.Field
 		ExtraFields                 map[string]respjson.Field
 		raw                         string
@@ -2987,11 +3799,13 @@ type SeekCompletedParam struct {
 	// Any of "started", "failed_before_start", "ended_before_start".
 	StartupOutcome    param.Opt[SeekCompletedStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
 	ToPlayheadSeconds param.Opt[float64]                     `json:"to_playhead_seconds,omitzero" api:"required"`
-	ViewerID          param.Opt[string]                      `json:"viewer_id,omitzero" api:"required"`
-	ErrorCode         SeekCompletedErrorCodeUnionParam       `json:"error_code,omitzero" api:"required"`
-	ConnectorName     string                                 `json:"connector_name" api:"required"`
-	EventID           string                                 `json:"event_id" api:"required" format:"uuid"`
-	OccurredAt        time.Time                              `json:"occurred_at" api:"required" format:"date-time"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID      param.Opt[string]                `json:"viewer_id,omitzero" api:"required"`
+	ErrorCode     SeekCompletedErrorCodeUnionParam `json:"error_code,omitzero" api:"required"`
+	ConnectorName string                           `json:"connector_name" api:"required"`
+	EventID       string                           `json:"event_id" api:"required" format:"uuid"`
+	OccurredAt    time.Time                        `json:"occurred_at" api:"required" format:"date-time"`
 	// Name of the SDK or integration that produced the event. Informational metadata,
 	// preserved as received. Must contain at least one non-whitespace character.
 	SDKName                   string  `json:"sdk_name" api:"required"`
@@ -3028,6 +3842,11 @@ type SeekCompletedParam struct {
 	SelectedRenditionWidth      param.Opt[float64]           `json:"selected_rendition_width,omitzero"`
 	StartupTimeMs               param.Opt[float64]           `json:"startup_time_ms,omitzero"`
 	TotalVideoFrames            param.Opt[float64]           `json:"total_video_frames,omitzero"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID param.Opt[string] `json:"user_id,omitzero"`
+	// Optional human-readable video title for reports.
+	VideoTitle param.Opt[string] `json:"video_title,omitzero"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
@@ -3125,6 +3944,354 @@ func (r *StoredEvent) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+type SubtitleChanged struct {
+	ConnectorName    string `json:"connector_name" api:"required"`
+	ConnectorVersion string `json:"connector_version" api:"required"`
+	DeliveryHostname string `json:"delivery_hostname" api:"required"`
+	Environment      string `json:"environment" api:"required"`
+	// Any of "aborted", "network", "decode", "unsupported", "unknown".
+	ErrorCategory        SubtitleChangedErrorCategory          `json:"error_category" api:"required"`
+	ErrorCode            SubtitleChangedErrorCodeUnion         `json:"error_code" api:"required"`
+	ErrorFatal           bool                                  `json:"error_fatal" api:"required"`
+	ErrorPlayheadSeconds float64                               `json:"error_playhead_seconds" api:"required"`
+	EventID              string                                `json:"event_id" api:"required" format:"uuid"`
+	EventName            constant.ChunkifyVideoSubtitleChanged `json:"event_name" default:"chunkify.video.subtitle_changed"`
+	OccurredAt           time.Time                             `json:"occurred_at" api:"required" format:"date-time"`
+	PlayerName           string                                `json:"player_name" api:"required"`
+	PlayerVersion        string                                `json:"player_version" api:"required"`
+	PlayheadSeconds      float64                               `json:"playhead_seconds" api:"required"`
+	// Language before the change; null when subtitles were off.
+	PreviousSubtitleLanguage string `json:"previous_subtitle_language" api:"required"`
+	// Any of "ended", "destroyed", "source_changed", "page_exit".
+	Reason        SubtitleChangedReason `json:"reason" api:"required"`
+	SchemaVersion float64               `json:"schema_version" api:"required"`
+	// Name of the SDK or integration that produced the event. Informational metadata,
+	// preserved as received. Must contain at least one non-whitespace character.
+	SDKName    string `json:"sdk_name" api:"required"`
+	SDKVersion string `json:"sdk_version" api:"required"`
+	Sequence   int64  `json:"sequence" api:"required"`
+	// Any of "started", "failed_before_start", "ended_before_start".
+	StartupOutcome SubtitleChangedStartupOutcome `json:"startup_outcome" api:"required"`
+	// Language after the change; null when subtitles are now off.
+	SubtitleLanguage string `json:"subtitle_language" api:"required"`
+	VideoID          string `json:"video_id" api:"required"`
+	ViewID           string `json:"view_id" api:"required" format:"uuid"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID string `json:"viewer_id" api:"required"`
+	// Optional browser information supplied by the player.
+	BrowserContext              any                           `json:"browser_context"`
+	DeliveryRequestCount        float64                       `json:"delivery_request_count" api:"nullable"`
+	DeliveryThroughputBps       float64                       `json:"delivery_throughput_bps" api:"nullable"`
+	DeliveryTransferredBytes    float64                       `json:"delivery_transferred_bytes" api:"nullable"`
+	DroppedVideoFrames          float64                       `json:"dropped_video_frames" api:"nullable"`
+	FirstVideoFrameTimeMs       float64                       `json:"first_video_frame_time_ms" api:"nullable"`
+	FurthestProgressRatio       float64                       `json:"furthest_progress_ratio" api:"nullable"`
+	MaximumPlayheadSeconds      float64                       `json:"maximum_playhead_seconds"`
+	MediaDurationSeconds        float64                       `json:"media_duration_seconds" api:"nullable"`
+	MediaHeightPx               float64                       `json:"media_height_px" api:"nullable"`
+	MediaWidthPx                float64                       `json:"media_width_px" api:"nullable"`
+	PlayerHeightPx              float64                       `json:"player_height_px" api:"nullable"`
+	PlayerWidthPx               float64                       `json:"player_width_px" api:"nullable"`
+	PlayingTimeMs               float64                       `json:"playing_time_ms"`
+	RebufferCount               float64                       `json:"rebuffer_count"`
+	RebufferDurationMs          float64                       `json:"rebuffer_duration_ms"`
+	RebufferRatio               float64                       `json:"rebuffer_ratio" api:"nullable"`
+	RenditionPlayingTime        []shared.RenditionPlayingTime `json:"rendition_playing_time" api:"nullable"`
+	RenditionSwitchCount        float64                       `json:"rendition_switch_count" api:"nullable"`
+	SeekCount                   float64                       `json:"seek_count"`
+	SeekDurationMs              float64                       `json:"seek_duration_ms"`
+	SelectedRenditionBitrateBps float64                       `json:"selected_rendition_bitrate_bps" api:"nullable"`
+	SelectedRenditionCodec      string                        `json:"selected_rendition_codec" api:"nullable"`
+	SelectedRenditionHeight     float64                       `json:"selected_rendition_height" api:"nullable"`
+	SelectedRenditionWidth      float64                       `json:"selected_rendition_width" api:"nullable"`
+	StartupTimeMs               float64                       `json:"startup_time_ms" api:"nullable"`
+	TotalVideoFrames            float64                       `json:"total_video_frames" api:"nullable"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID string `json:"user_id" api:"nullable"`
+	// Optional human-readable video title for reports.
+	VideoTitle string `json:"video_title" api:"nullable"`
+	// Tab visibility when the event was recorded. Hidden does not imply paused
+	// playback or identify the cause of a pause. Missing on older events; null when
+	// unavailable.
+	//
+	// Any of "visible", "hidden".
+	VisibilityState SubtitleChangedVisibilityState `json:"visibility_state" api:"nullable"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ConnectorName               respjson.Field
+		ConnectorVersion            respjson.Field
+		DeliveryHostname            respjson.Field
+		Environment                 respjson.Field
+		ErrorCategory               respjson.Field
+		ErrorCode                   respjson.Field
+		ErrorFatal                  respjson.Field
+		ErrorPlayheadSeconds        respjson.Field
+		EventID                     respjson.Field
+		EventName                   respjson.Field
+		OccurredAt                  respjson.Field
+		PlayerName                  respjson.Field
+		PlayerVersion               respjson.Field
+		PlayheadSeconds             respjson.Field
+		PreviousSubtitleLanguage    respjson.Field
+		Reason                      respjson.Field
+		SchemaVersion               respjson.Field
+		SDKName                     respjson.Field
+		SDKVersion                  respjson.Field
+		Sequence                    respjson.Field
+		StartupOutcome              respjson.Field
+		SubtitleLanguage            respjson.Field
+		VideoID                     respjson.Field
+		ViewID                      respjson.Field
+		ViewerID                    respjson.Field
+		BrowserContext              respjson.Field
+		DeliveryRequestCount        respjson.Field
+		DeliveryThroughputBps       respjson.Field
+		DeliveryTransferredBytes    respjson.Field
+		DroppedVideoFrames          respjson.Field
+		FirstVideoFrameTimeMs       respjson.Field
+		FurthestProgressRatio       respjson.Field
+		MaximumPlayheadSeconds      respjson.Field
+		MediaDurationSeconds        respjson.Field
+		MediaHeightPx               respjson.Field
+		MediaWidthPx                respjson.Field
+		PlayerHeightPx              respjson.Field
+		PlayerWidthPx               respjson.Field
+		PlayingTimeMs               respjson.Field
+		RebufferCount               respjson.Field
+		RebufferDurationMs          respjson.Field
+		RebufferRatio               respjson.Field
+		RenditionPlayingTime        respjson.Field
+		RenditionSwitchCount        respjson.Field
+		SeekCount                   respjson.Field
+		SeekDurationMs              respjson.Field
+		SelectedRenditionBitrateBps respjson.Field
+		SelectedRenditionCodec      respjson.Field
+		SelectedRenditionHeight     respjson.Field
+		SelectedRenditionWidth      respjson.Field
+		StartupTimeMs               respjson.Field
+		TotalVideoFrames            respjson.Field
+		UserID                      respjson.Field
+		VideoTitle                  respjson.Field
+		VisibilityState             respjson.Field
+		ExtraFields                 map[string]respjson.Field
+		raw                         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r SubtitleChanged) RawJSON() string { return r.JSON.raw }
+func (r *SubtitleChanged) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// ToParam converts this SubtitleChanged to a SubtitleChangedParam.
+//
+// Warning: the fields of the param type will not be present. ToParam should only
+// be used at the last possible moment before sending a request. Test for this with
+// SubtitleChangedParam.Overrides()
+func (r SubtitleChanged) ToParam() SubtitleChangedParam {
+	return param.Override[SubtitleChangedParam](json.RawMessage(r.RawJSON()))
+}
+
+type SubtitleChangedErrorCategory string
+
+const (
+	SubtitleChangedErrorCategoryAborted     SubtitleChangedErrorCategory = "aborted"
+	SubtitleChangedErrorCategoryNetwork     SubtitleChangedErrorCategory = "network"
+	SubtitleChangedErrorCategoryDecode      SubtitleChangedErrorCategory = "decode"
+	SubtitleChangedErrorCategoryUnsupported SubtitleChangedErrorCategory = "unsupported"
+	SubtitleChangedErrorCategoryUnknown     SubtitleChangedErrorCategory = "unknown"
+)
+
+// SubtitleChangedErrorCodeUnion contains all possible properties and values from
+// [string], [float64].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfFloat]
+type SubtitleChangedErrorCodeUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [float64] instead of an object.
+	OfFloat float64 `json:",inline"`
+	JSON    struct {
+		OfString respjson.Field
+		OfFloat  respjson.Field
+		raw      string
+	} `json:"-"`
+}
+
+func (u SubtitleChangedErrorCodeUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u SubtitleChangedErrorCodeUnion) AsFloat() (v float64) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u SubtitleChangedErrorCodeUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *SubtitleChangedErrorCodeUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type SubtitleChangedReason string
+
+const (
+	SubtitleChangedReasonEnded         SubtitleChangedReason = "ended"
+	SubtitleChangedReasonDestroyed     SubtitleChangedReason = "destroyed"
+	SubtitleChangedReasonSourceChanged SubtitleChangedReason = "source_changed"
+	SubtitleChangedReasonPageExit      SubtitleChangedReason = "page_exit"
+)
+
+type SubtitleChangedStartupOutcome string
+
+const (
+	SubtitleChangedStartupOutcomeStarted           SubtitleChangedStartupOutcome = "started"
+	SubtitleChangedStartupOutcomeFailedBeforeStart SubtitleChangedStartupOutcome = "failed_before_start"
+	SubtitleChangedStartupOutcomeEndedBeforeStart  SubtitleChangedStartupOutcome = "ended_before_start"
+)
+
+// Tab visibility when the event was recorded. Hidden does not imply paused
+// playback or identify the cause of a pause. Missing on older events; null when
+// unavailable.
+type SubtitleChangedVisibilityState string
+
+const (
+	SubtitleChangedVisibilityStateVisible SubtitleChangedVisibilityState = "visible"
+	SubtitleChangedVisibilityStateHidden  SubtitleChangedVisibilityState = "hidden"
+)
+
+// The properties ConnectorName, ConnectorVersion, DeliveryHostname, Environment,
+// ErrorCategory, ErrorCode, ErrorFatal, ErrorPlayheadSeconds, EventID, EventName,
+// OccurredAt, PlayerName, PlayerVersion, PlayheadSeconds,
+// PreviousSubtitleLanguage, Reason, SchemaVersion, SDKName, SDKVersion, Sequence,
+// StartupOutcome, SubtitleLanguage, VideoID, ViewID, ViewerID are required.
+type SubtitleChangedParam struct {
+	ConnectorVersion param.Opt[string] `json:"connector_version,omitzero" api:"required"`
+	DeliveryHostname param.Opt[string] `json:"delivery_hostname,omitzero" api:"required"`
+	Environment      param.Opt[string] `json:"environment,omitzero" api:"required"`
+	// Any of "aborted", "network", "decode", "unsupported", "unknown".
+	ErrorCategory        param.Opt[SubtitleChangedErrorCategory] `json:"error_category,omitzero" api:"required"`
+	ErrorFatal           param.Opt[bool]                         `json:"error_fatal,omitzero" api:"required"`
+	ErrorPlayheadSeconds param.Opt[float64]                      `json:"error_playhead_seconds,omitzero" api:"required"`
+	PlayerName           param.Opt[string]                       `json:"player_name,omitzero" api:"required"`
+	PlayerVersion        param.Opt[string]                       `json:"player_version,omitzero" api:"required"`
+	PlayheadSeconds      param.Opt[float64]                      `json:"playhead_seconds,omitzero" api:"required"`
+	// Language before the change; null when subtitles were off.
+	PreviousSubtitleLanguage param.Opt[string] `json:"previous_subtitle_language,omitzero" api:"required"`
+	// Any of "ended", "destroyed", "source_changed", "page_exit".
+	Reason param.Opt[SubtitleChangedReason] `json:"reason,omitzero" api:"required"`
+	// Any of "started", "failed_before_start", "ended_before_start".
+	StartupOutcome param.Opt[SubtitleChangedStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
+	// Language after the change; null when subtitles are now off.
+	SubtitleLanguage param.Opt[string] `json:"subtitle_language,omitzero" api:"required"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID      param.Opt[string]                  `json:"viewer_id,omitzero" api:"required"`
+	ErrorCode     SubtitleChangedErrorCodeUnionParam `json:"error_code,omitzero" api:"required"`
+	ConnectorName string                             `json:"connector_name" api:"required"`
+	EventID       string                             `json:"event_id" api:"required" format:"uuid"`
+	OccurredAt    time.Time                          `json:"occurred_at" api:"required" format:"date-time"`
+	// Name of the SDK or integration that produced the event. Informational metadata,
+	// preserved as received. Must contain at least one non-whitespace character.
+	SDKName                     string             `json:"sdk_name" api:"required"`
+	SDKVersion                  string             `json:"sdk_version" api:"required"`
+	Sequence                    int64              `json:"sequence" api:"required"`
+	VideoID                     string             `json:"video_id" api:"required"`
+	ViewID                      string             `json:"view_id" api:"required" format:"uuid"`
+	DeliveryRequestCount        param.Opt[float64] `json:"delivery_request_count,omitzero"`
+	DeliveryThroughputBps       param.Opt[float64] `json:"delivery_throughput_bps,omitzero"`
+	DeliveryTransferredBytes    param.Opt[float64] `json:"delivery_transferred_bytes,omitzero"`
+	DroppedVideoFrames          param.Opt[float64] `json:"dropped_video_frames,omitzero"`
+	FirstVideoFrameTimeMs       param.Opt[float64] `json:"first_video_frame_time_ms,omitzero"`
+	FurthestProgressRatio       param.Opt[float64] `json:"furthest_progress_ratio,omitzero"`
+	MediaDurationSeconds        param.Opt[float64] `json:"media_duration_seconds,omitzero"`
+	MediaHeightPx               param.Opt[float64] `json:"media_height_px,omitzero"`
+	MediaWidthPx                param.Opt[float64] `json:"media_width_px,omitzero"`
+	PlayerHeightPx              param.Opt[float64] `json:"player_height_px,omitzero"`
+	PlayerWidthPx               param.Opt[float64] `json:"player_width_px,omitzero"`
+	RebufferRatio               param.Opt[float64] `json:"rebuffer_ratio,omitzero"`
+	RenditionSwitchCount        param.Opt[float64] `json:"rendition_switch_count,omitzero"`
+	SelectedRenditionBitrateBps param.Opt[float64] `json:"selected_rendition_bitrate_bps,omitzero"`
+	SelectedRenditionCodec      param.Opt[string]  `json:"selected_rendition_codec,omitzero"`
+	SelectedRenditionHeight     param.Opt[float64] `json:"selected_rendition_height,omitzero"`
+	SelectedRenditionWidth      param.Opt[float64] `json:"selected_rendition_width,omitzero"`
+	StartupTimeMs               param.Opt[float64] `json:"startup_time_ms,omitzero"`
+	TotalVideoFrames            param.Opt[float64] `json:"total_video_frames,omitzero"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID param.Opt[string] `json:"user_id,omitzero"`
+	// Optional human-readable video title for reports.
+	VideoTitle param.Opt[string] `json:"video_title,omitzero"`
+	// Tab visibility when the event was recorded. Hidden does not imply paused
+	// playback or identify the cause of a pause. Missing on older events; null when
+	// unavailable.
+	//
+	// Any of "visible", "hidden".
+	VisibilityState        param.Opt[SubtitleChangedVisibilityState] `json:"visibility_state,omitzero"`
+	MaximumPlayheadSeconds param.Opt[float64]                        `json:"maximum_playhead_seconds,omitzero"`
+	PlayingTimeMs          param.Opt[float64]                        `json:"playing_time_ms,omitzero"`
+	RebufferCount          param.Opt[float64]                        `json:"rebuffer_count,omitzero"`
+	RebufferDurationMs     param.Opt[float64]                        `json:"rebuffer_duration_ms,omitzero"`
+	SeekCount              param.Opt[float64]                        `json:"seek_count,omitzero"`
+	SeekDurationMs         param.Opt[float64]                        `json:"seek_duration_ms,omitzero"`
+	RenditionPlayingTime   []shared.RenditionPlayingTimeParam        `json:"rendition_playing_time,omitzero"`
+	// Optional browser information supplied by the player.
+	BrowserContext any `json:"browser_context,omitzero"`
+	// This field can be elided, and will marshal its zero value as
+	// "chunkify.video.subtitle_changed".
+	EventName constant.ChunkifyVideoSubtitleChanged `json:"event_name" default:"chunkify.video.subtitle_changed"`
+	// This field can be elided, and will marshal its zero value as 1.
+	SchemaVersion float64 `json:"schema_version,omitzero" api:"required"`
+	paramObj
+}
+
+func (r SubtitleChangedParam) MarshalJSON() (data []byte, err error) {
+	type shadow SubtitleChangedParam
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *SubtitleChangedParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[SubtitleChangedParam](
+		"schema_version", 1,
+	)
+}
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type SubtitleChangedErrorCodeUnionParam struct {
+	OfString param.Opt[string]  `json:",omitzero,inline"`
+	OfFloat  param.Opt[float64] `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u SubtitleChangedErrorCodeUnionParam) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfString, u.OfFloat)
+}
+func (u *SubtitleChangedErrorCodeUnionParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func (u *SubtitleChangedErrorCodeUnionParam) asAny() any {
+	if !param.IsOmitted(u.OfString) {
+		return &u.OfString.Value
+	} else if !param.IsOmitted(u.OfFloat) {
+		return &u.OfFloat.Value
+	}
+	return nil
+}
+
 type ViewEnded struct {
 	ConnectorName            string  `json:"connector_name" api:"required"`
 	ConnectorVersion         string  `json:"connector_version" api:"required"`
@@ -3178,9 +4345,17 @@ type ViewEnded struct {
 	TotalVideoFrames float64                 `json:"total_video_frames" api:"required"`
 	VideoID          string                  `json:"video_id" api:"required"`
 	ViewID           string                  `json:"view_id" api:"required" format:"uuid"`
-	ViewerID         string                  `json:"viewer_id" api:"required"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID string `json:"viewer_id" api:"required"`
 	// Optional browser information supplied by the player.
 	BrowserContext any `json:"browser_context"`
+	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
+	// to 16. Optional.
+	PlaybackRate float64 `json:"playback_rate" api:"nullable"`
+	// Cumulative playing time per playback rate for this attempt. At most 32 entries.
+	// Optional.
+	PlaybackRatePlayingTime []shared.PlaybackRatePlayingTime `json:"playback_rate_playing_time" api:"nullable"`
 	// Cumulative played media ranges for this attempt, sorted and merged without
 	// overlaps. Seeking, pauses and buffering are excluded. Missing or null means
 	// unavailable; an empty array means measured but no section played. Replaying a
@@ -3188,6 +4363,17 @@ type ViewEnded struct {
 	PlayedRanges []shared.PlayedRange `json:"played_ranges" api:"nullable"`
 	// Current media position at this event, not the maximum reached.
 	PlayheadSeconds float64 `json:"playhead_seconds" api:"nullable"`
+	// Language tag (BCP 47) of the showing subtitles or captions track; und when the
+	// track declares no language; null when subtitles are off. Optional.
+	SubtitleLanguage string `json:"subtitle_language" api:"nullable"`
+	// Cumulative playing time per subtitle language for this attempt, null language
+	// meaning subtitles off. At most 32 entries. Optional.
+	SubtitlePlayingTime []shared.SubtitlePlayingTime `json:"subtitle_playing_time" api:"nullable"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID string `json:"user_id" api:"nullable"`
+	// Optional human-readable video title for reports.
+	VideoTitle string `json:"video_title" api:"nullable"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
@@ -3245,8 +4431,14 @@ type ViewEnded struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		PlaybackRate                respjson.Field
+		PlaybackRatePlayingTime     respjson.Field
 		PlayedRanges                respjson.Field
 		PlayheadSeconds             respjson.Field
+		SubtitleLanguage            respjson.Field
+		SubtitlePlayingTime         respjson.Field
+		UserID                      respjson.Field
+		VideoTitle                  respjson.Field
 		VisibilityState             respjson.Field
 		ExtraFields                 map[string]respjson.Field
 		raw                         string
@@ -3383,9 +4575,11 @@ type ViewEndedParam struct {
 	SelectedRenditionHeight     param.Opt[float64]         `json:"selected_rendition_height,omitzero" api:"required"`
 	SelectedRenditionWidth      param.Opt[float64]         `json:"selected_rendition_width,omitzero" api:"required"`
 	// Any of "started", "failed_before_start", "ended_before_start".
-	StartupOutcome         param.Opt[ViewEndedStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
-	StartupTimeMs          param.Opt[float64]                 `json:"startup_time_ms,omitzero" api:"required"`
-	TotalVideoFrames       param.Opt[float64]                 `json:"total_video_frames,omitzero" api:"required"`
+	StartupOutcome   param.Opt[ViewEndedStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
+	StartupTimeMs    param.Opt[float64]                 `json:"startup_time_ms,omitzero" api:"required"`
+	TotalVideoFrames param.Opt[float64]                 `json:"total_video_frames,omitzero" api:"required"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
 	ViewerID               param.Opt[string]                  `json:"viewer_id,omitzero" api:"required"`
 	ErrorCode              ViewEndedErrorCodeUnionParam       `json:"error_code,omitzero" api:"required"`
 	RenditionPlayingTime   []shared.RenditionPlayingTimeParam `json:"rendition_playing_time,omitzero" api:"required"`
@@ -3405,19 +4599,36 @@ type ViewEndedParam struct {
 	Sequence       int64   `json:"sequence" api:"required"`
 	VideoID        string  `json:"video_id" api:"required"`
 	ViewID         string  `json:"view_id" api:"required" format:"uuid"`
+	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
+	// to 16. Optional.
+	PlaybackRate param.Opt[float64] `json:"playback_rate,omitzero"`
 	// Current media position at this event, not the maximum reached.
 	PlayheadSeconds param.Opt[float64] `json:"playhead_seconds,omitzero"`
+	// Language tag (BCP 47) of the showing subtitles or captions track; und when the
+	// track declares no language; null when subtitles are off. Optional.
+	SubtitleLanguage param.Opt[string] `json:"subtitle_language,omitzero"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID param.Opt[string] `json:"user_id,omitzero"`
+	// Optional human-readable video title for reports.
+	VideoTitle param.Opt[string] `json:"video_title,omitzero"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
 	//
 	// Any of "visible", "hidden".
 	VisibilityState param.Opt[ViewEndedVisibilityState] `json:"visibility_state,omitzero"`
+	// Cumulative playing time per playback rate for this attempt. At most 32 entries.
+	// Optional.
+	PlaybackRatePlayingTime []shared.PlaybackRatePlayingTimeParam `json:"playback_rate_playing_time,omitzero"`
 	// Cumulative played media ranges for this attempt, sorted and merged without
 	// overlaps. Seeking, pauses and buffering are excluded. Missing or null means
 	// unavailable; an empty array means measured but no section played. Replaying a
 	// section does not add another range.
 	PlayedRanges []shared.PlayedRangeParam `json:"played_ranges,omitzero"`
+	// Cumulative playing time per subtitle language for this attempt, null language
+	// meaning subtitles off. At most 32 entries. Optional.
+	SubtitlePlayingTime []shared.SubtitlePlayingTimeParam `json:"subtitle_playing_time,omitzero"`
 	// Optional browser information supplied by the player.
 	BrowserContext any `json:"browser_context,omitzero"`
 	// This field can be elided, and will marshal its zero value as
@@ -3520,9 +4731,17 @@ type ViewSnapshot struct {
 	TotalVideoFrames float64                    `json:"total_video_frames" api:"required"`
 	VideoID          string                     `json:"video_id" api:"required"`
 	ViewID           string                     `json:"view_id" api:"required" format:"uuid"`
-	ViewerID         string                     `json:"viewer_id" api:"required"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID string `json:"viewer_id" api:"required"`
 	// Optional browser information supplied by the player.
 	BrowserContext any `json:"browser_context"`
+	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
+	// to 16. Optional.
+	PlaybackRate float64 `json:"playback_rate" api:"nullable"`
+	// Cumulative playing time per playback rate for this attempt. At most 32 entries.
+	// Optional.
+	PlaybackRatePlayingTime []shared.PlaybackRatePlayingTime `json:"playback_rate_playing_time" api:"nullable"`
 	// Cumulative played media ranges for this attempt, sorted and merged without
 	// overlaps. Seeking, pauses and buffering are excluded. Missing or null means
 	// unavailable; an empty array means measured but no section played. Replaying a
@@ -3530,6 +4749,17 @@ type ViewSnapshot struct {
 	PlayedRanges []shared.PlayedRange `json:"played_ranges" api:"nullable"`
 	// Current media position at this event, not the maximum reached.
 	PlayheadSeconds float64 `json:"playhead_seconds" api:"nullable"`
+	// Language tag (BCP 47) of the showing subtitles or captions track; und when the
+	// track declares no language; null when subtitles are off. Optional.
+	SubtitleLanguage string `json:"subtitle_language" api:"nullable"`
+	// Cumulative playing time per subtitle language for this attempt, null language
+	// meaning subtitles off. At most 32 entries. Optional.
+	SubtitlePlayingTime []shared.SubtitlePlayingTime `json:"subtitle_playing_time" api:"nullable"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID string `json:"user_id" api:"nullable"`
+	// Optional human-readable video title for reports.
+	VideoTitle string `json:"video_title" api:"nullable"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
@@ -3587,8 +4817,14 @@ type ViewSnapshot struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		PlaybackRate                respjson.Field
+		PlaybackRatePlayingTime     respjson.Field
 		PlayedRanges                respjson.Field
 		PlayheadSeconds             respjson.Field
+		SubtitleLanguage            respjson.Field
+		SubtitlePlayingTime         respjson.Field
+		UserID                      respjson.Field
+		VideoTitle                  respjson.Field
 		VisibilityState             respjson.Field
 		ExtraFields                 map[string]respjson.Field
 		raw                         string
@@ -3725,19 +4961,21 @@ type ViewSnapshotParam struct {
 	SelectedRenditionHeight     param.Opt[float64]            `json:"selected_rendition_height,omitzero" api:"required"`
 	SelectedRenditionWidth      param.Opt[float64]            `json:"selected_rendition_width,omitzero" api:"required"`
 	// Any of "started", "failed_before_start", "ended_before_start".
-	StartupOutcome         param.Opt[ViewSnapshotStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
-	StartupTimeMs          param.Opt[float64]                    `json:"startup_time_ms,omitzero" api:"required"`
-	TotalVideoFrames       param.Opt[float64]                    `json:"total_video_frames,omitzero" api:"required"`
-	ViewerID               param.Opt[string]                     `json:"viewer_id,omitzero" api:"required"`
-	ErrorCode              ViewSnapshotErrorCodeUnionParam       `json:"error_code,omitzero" api:"required"`
-	RenditionPlayingTime   []shared.RenditionPlayingTimeParam    `json:"rendition_playing_time,omitzero" api:"required"`
-	ConnectorName          string                                `json:"connector_name" api:"required"`
-	EventID                string                                `json:"event_id" api:"required" format:"uuid"`
-	MaximumPlayheadSeconds float64                               `json:"maximum_playhead_seconds" api:"required"`
-	OccurredAt             time.Time                             `json:"occurred_at" api:"required" format:"date-time"`
-	PlayingTimeMs          float64                               `json:"playing_time_ms" api:"required"`
-	RebufferCount          float64                               `json:"rebuffer_count" api:"required"`
-	RebufferDurationMs     float64                               `json:"rebuffer_duration_ms" api:"required"`
+	StartupOutcome   param.Opt[ViewSnapshotStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
+	StartupTimeMs    param.Opt[float64]                    `json:"startup_time_ms,omitzero" api:"required"`
+	TotalVideoFrames param.Opt[float64]                    `json:"total_video_frames,omitzero" api:"required"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID               param.Opt[string]                  `json:"viewer_id,omitzero" api:"required"`
+	ErrorCode              ViewSnapshotErrorCodeUnionParam    `json:"error_code,omitzero" api:"required"`
+	RenditionPlayingTime   []shared.RenditionPlayingTimeParam `json:"rendition_playing_time,omitzero" api:"required"`
+	ConnectorName          string                             `json:"connector_name" api:"required"`
+	EventID                string                             `json:"event_id" api:"required" format:"uuid"`
+	MaximumPlayheadSeconds float64                            `json:"maximum_playhead_seconds" api:"required"`
+	OccurredAt             time.Time                          `json:"occurred_at" api:"required" format:"date-time"`
+	PlayingTimeMs          float64                            `json:"playing_time_ms" api:"required"`
+	RebufferCount          float64                            `json:"rebuffer_count" api:"required"`
+	RebufferDurationMs     float64                            `json:"rebuffer_duration_ms" api:"required"`
 	// Name of the SDK or integration that produced the event. Informational metadata,
 	// preserved as received. Must contain at least one non-whitespace character.
 	SDKName        string  `json:"sdk_name" api:"required"`
@@ -3747,19 +4985,36 @@ type ViewSnapshotParam struct {
 	Sequence       int64   `json:"sequence" api:"required"`
 	VideoID        string  `json:"video_id" api:"required"`
 	ViewID         string  `json:"view_id" api:"required" format:"uuid"`
+	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
+	// to 16. Optional.
+	PlaybackRate param.Opt[float64] `json:"playback_rate,omitzero"`
 	// Current media position at this event, not the maximum reached.
 	PlayheadSeconds param.Opt[float64] `json:"playhead_seconds,omitzero"`
+	// Language tag (BCP 47) of the showing subtitles or captions track; und when the
+	// track declares no language; null when subtitles are off. Optional.
+	SubtitleLanguage param.Opt[string] `json:"subtitle_language,omitzero"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID param.Opt[string] `json:"user_id,omitzero"`
+	// Optional human-readable video title for reports.
+	VideoTitle param.Opt[string] `json:"video_title,omitzero"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
 	//
 	// Any of "visible", "hidden".
 	VisibilityState param.Opt[ViewSnapshotVisibilityState] `json:"visibility_state,omitzero"`
+	// Cumulative playing time per playback rate for this attempt. At most 32 entries.
+	// Optional.
+	PlaybackRatePlayingTime []shared.PlaybackRatePlayingTimeParam `json:"playback_rate_playing_time,omitzero"`
 	// Cumulative played media ranges for this attempt, sorted and merged without
 	// overlaps. Seeking, pauses and buffering are excluded. Missing or null means
 	// unavailable; an empty array means measured but no section played. Replaying a
 	// section does not add another range.
 	PlayedRanges []shared.PlayedRangeParam `json:"played_ranges,omitzero"`
+	// Cumulative playing time per subtitle language for this attempt, null language
+	// meaning subtitles off. At most 32 entries. Optional.
+	SubtitlePlayingTime []shared.SubtitlePlayingTimeParam `json:"subtitle_playing_time,omitzero"`
 	// Optional browser information supplied by the player.
 	BrowserContext any `json:"browser_context,omitzero"`
 	// This field can be elided, and will marshal its zero value as
@@ -3862,9 +5117,25 @@ type ViewStarted struct {
 	TotalVideoFrames float64                   `json:"total_video_frames" api:"required"`
 	VideoID          string                    `json:"video_id" api:"required"`
 	ViewID           string                    `json:"view_id" api:"required" format:"uuid"`
-	ViewerID         string                    `json:"viewer_id" api:"required"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID string `json:"viewer_id" api:"required"`
 	// Optional browser information supplied by the player.
 	BrowserContext any `json:"browser_context"`
+	// Integrator-defined dimensions set once when the view starts: at most 10 keys of
+	// 1 to 40 characters a-z, 0-9 and \_, each with text of 1 to 256 characters, a
+	// number or a boolean. Reports compare values as text, exactly and
+	// case-sensitively: numbers as their JSON text (5, 5.5; send whole numbers without
+	// a decimal part, as JavaScript does), booleans as true or false. Only
+	// view_started accepts custom. Never put personal data here; use user_id for user
+	// identity.
+	Custom shared.CustomDimensions `json:"custom"`
+	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
+	// to 16. Optional.
+	PlaybackRate float64 `json:"playback_rate" api:"nullable"`
+	// Cumulative playing time per playback rate for this attempt. At most 32 entries.
+	// Optional.
+	PlaybackRatePlayingTime []shared.PlaybackRatePlayingTime `json:"playback_rate_playing_time" api:"nullable"`
 	// Cumulative played media ranges for this attempt, sorted and merged without
 	// overlaps. Seeking, pauses and buffering are excluded. Missing or null means
 	// unavailable; an empty array means measured but no section played. Replaying a
@@ -3872,6 +5143,17 @@ type ViewStarted struct {
 	PlayedRanges []shared.PlayedRange `json:"played_ranges" api:"nullable"`
 	// Current media position at this event, not the maximum reached.
 	PlayheadSeconds float64 `json:"playhead_seconds" api:"nullable"`
+	// Language tag (BCP 47) of the showing subtitles or captions track; und when the
+	// track declares no language; null when subtitles are off. Optional.
+	SubtitleLanguage string `json:"subtitle_language" api:"nullable"`
+	// Cumulative playing time per subtitle language for this attempt, null language
+	// meaning subtitles off. At most 32 entries. Optional.
+	SubtitlePlayingTime []shared.SubtitlePlayingTime `json:"subtitle_playing_time" api:"nullable"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID string `json:"user_id" api:"nullable"`
+	// Optional human-readable video title for reports.
+	VideoTitle string `json:"video_title" api:"nullable"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
@@ -3929,8 +5211,15 @@ type ViewStarted struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		Custom                      respjson.Field
+		PlaybackRate                respjson.Field
+		PlaybackRatePlayingTime     respjson.Field
 		PlayedRanges                respjson.Field
 		PlayheadSeconds             respjson.Field
+		SubtitleLanguage            respjson.Field
+		SubtitlePlayingTime         respjson.Field
+		UserID                      respjson.Field
+		VideoTitle                  respjson.Field
 		VisibilityState             respjson.Field
 		ExtraFields                 map[string]respjson.Field
 		raw                         string
@@ -4067,19 +5356,21 @@ type ViewStartedParam struct {
 	SelectedRenditionHeight     param.Opt[float64]           `json:"selected_rendition_height,omitzero" api:"required"`
 	SelectedRenditionWidth      param.Opt[float64]           `json:"selected_rendition_width,omitzero" api:"required"`
 	// Any of "started", "failed_before_start", "ended_before_start".
-	StartupOutcome         param.Opt[ViewStartedStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
-	StartupTimeMs          param.Opt[float64]                   `json:"startup_time_ms,omitzero" api:"required"`
-	TotalVideoFrames       param.Opt[float64]                   `json:"total_video_frames,omitzero" api:"required"`
-	ViewerID               param.Opt[string]                    `json:"viewer_id,omitzero" api:"required"`
-	ErrorCode              ViewStartedErrorCodeUnionParam       `json:"error_code,omitzero" api:"required"`
-	RenditionPlayingTime   []shared.RenditionPlayingTimeParam   `json:"rendition_playing_time,omitzero" api:"required"`
-	ConnectorName          string                               `json:"connector_name" api:"required"`
-	EventID                string                               `json:"event_id" api:"required" format:"uuid"`
-	MaximumPlayheadSeconds float64                              `json:"maximum_playhead_seconds" api:"required"`
-	OccurredAt             time.Time                            `json:"occurred_at" api:"required" format:"date-time"`
-	PlayingTimeMs          float64                              `json:"playing_time_ms" api:"required"`
-	RebufferCount          float64                              `json:"rebuffer_count" api:"required"`
-	RebufferDurationMs     float64                              `json:"rebuffer_duration_ms" api:"required"`
+	StartupOutcome   param.Opt[ViewStartedStartupOutcome] `json:"startup_outcome,omitzero" api:"required"`
+	StartupTimeMs    param.Opt[float64]                   `json:"startup_time_ms,omitzero" api:"required"`
+	TotalVideoFrames param.Opt[float64]                   `json:"total_video_frames,omitzero" api:"required"`
+	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
+	// the page's localStorage.
+	ViewerID               param.Opt[string]                  `json:"viewer_id,omitzero" api:"required"`
+	ErrorCode              ViewStartedErrorCodeUnionParam     `json:"error_code,omitzero" api:"required"`
+	RenditionPlayingTime   []shared.RenditionPlayingTimeParam `json:"rendition_playing_time,omitzero" api:"required"`
+	ConnectorName          string                             `json:"connector_name" api:"required"`
+	EventID                string                             `json:"event_id" api:"required" format:"uuid"`
+	MaximumPlayheadSeconds float64                            `json:"maximum_playhead_seconds" api:"required"`
+	OccurredAt             time.Time                          `json:"occurred_at" api:"required" format:"date-time"`
+	PlayingTimeMs          float64                            `json:"playing_time_ms" api:"required"`
+	RebufferCount          float64                            `json:"rebuffer_count" api:"required"`
+	RebufferDurationMs     float64                            `json:"rebuffer_duration_ms" api:"required"`
 	// Name of the SDK or integration that produced the event. Informational metadata,
 	// preserved as received. Must contain at least one non-whitespace character.
 	SDKName        string  `json:"sdk_name" api:"required"`
@@ -4089,21 +5380,46 @@ type ViewStartedParam struct {
 	Sequence       int64   `json:"sequence" api:"required"`
 	VideoID        string  `json:"video_id" api:"required"`
 	ViewID         string  `json:"view_id" api:"required" format:"uuid"`
+	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
+	// to 16. Optional.
+	PlaybackRate param.Opt[float64] `json:"playback_rate,omitzero"`
 	// Current media position at this event, not the maximum reached.
 	PlayheadSeconds param.Opt[float64] `json:"playhead_seconds,omitzero"`
+	// Language tag (BCP 47) of the showing subtitles or captions track; und when the
+	// track declares no language; null when subtitles are off. Optional.
+	SubtitleLanguage param.Opt[string] `json:"subtitle_language,omitzero"`
+	// Optional integrator-supplied user ID, used to link views to the integrator's own
+	// users.
+	UserID param.Opt[string] `json:"user_id,omitzero"`
+	// Optional human-readable video title for reports.
+	VideoTitle param.Opt[string] `json:"video_title,omitzero"`
 	// Tab visibility when the event was recorded. Hidden does not imply paused
 	// playback or identify the cause of a pause. Missing on older events; null when
 	// unavailable.
 	//
 	// Any of "visible", "hidden".
 	VisibilityState param.Opt[ViewStartedVisibilityState] `json:"visibility_state,omitzero"`
+	// Cumulative playing time per playback rate for this attempt. At most 32 entries.
+	// Optional.
+	PlaybackRatePlayingTime []shared.PlaybackRatePlayingTimeParam `json:"playback_rate_playing_time,omitzero"`
 	// Cumulative played media ranges for this attempt, sorted and merged without
 	// overlaps. Seeking, pauses and buffering are excluded. Missing or null means
 	// unavailable; an empty array means measured but no section played. Replaying a
 	// section does not add another range.
 	PlayedRanges []shared.PlayedRangeParam `json:"played_ranges,omitzero"`
+	// Cumulative playing time per subtitle language for this attempt, null language
+	// meaning subtitles off. At most 32 entries. Optional.
+	SubtitlePlayingTime []shared.SubtitlePlayingTimeParam `json:"subtitle_playing_time,omitzero"`
 	// Optional browser information supplied by the player.
 	BrowserContext any `json:"browser_context,omitzero"`
+	// Integrator-defined dimensions set once when the view starts: at most 10 keys of
+	// 1 to 40 characters a-z, 0-9 and \_, each with text of 1 to 256 characters, a
+	// number or a boolean. Reports compare values as text, exactly and
+	// case-sensitively: numbers as their JSON text (5, 5.5; send whole numbers without
+	// a decimal part, as JavaScript does), booleans as true or false. Only
+	// view_started accepts custom. Never put personal data here; use user_id for user
+	// identity.
+	Custom shared.CustomDimensionsParam `json:"custom,omitzero"`
 	// This field can be elided, and will marshal its zero value as
 	// "chunkify.video.view_started".
 	EventName constant.ChunkifyVideoViewStarted `json:"event_name" default:"chunkify.video.view_started"`
@@ -4213,14 +5529,32 @@ type EventListParams struct {
 	// Metrics use the first retained view start; raw events use each event context.
 	// Missing values do not match.
 	PagePath param.Opt[string] `query:"page_path,omitzero" json:"-"`
+	// Playback rate from 0.01 to 16 with at most two decimals, such as 1, 1.5 or 2;
+	// 2.0 and 2 are the same rate. Metrics use the rate on the first retained view
+	// start; raw events use each event's value.
+	PlaybackRate param.Opt[string] `query:"playback_rate,omitzero" json:"-"`
+	// Exact, case-sensitive, non-blank subtitle language tag, such as fr or en-US; und
+	// for a subtitles track without a language. Metrics use the language showing on
+	// the first retained view start; raw events use each event's value. Views without
+	// subtitles at start do not match.
+	SubtitleLanguage param.Opt[string] `query:"subtitle_language,omitzero" json:"-"`
 	// Exclusive RFC3339 occurrence-time upper bound, with timezone. Summary/video
 	// queries apply it to the selected view_started event.
 	To param.Opt[time.Time] `query:"to,omitzero" format:"date-time" json:"-"`
-	// Exact video ID. Combined with all other filters using AND.
+	// Exact integrator-supplied user ID. Selects views by their start event; event
+	// lists match each event's own value. Missing/null user IDs do not match. Reports
+	// with this filter read one stored row per view.
+	UserID param.Opt[string] `query:"user_id,omitzero" json:"-"`
+	// Exact video ID; must not be blank. Combined with all other filters using AND.
 	VideoID param.Opt[string] `query:"video_id,omitzero" json:"-"`
+	// Exact, case-sensitive video title. Selects views by the title on their first
+	// retained start; event lists match each event's own value. Views without a title
+	// do not match. Reports with this filter read one stored row per view.
+	VideoTitle param.Opt[string] `query:"video_title,omitzero" json:"-"`
 	// Filter one playback attempt by view ID. Metrics use its first retained start.
 	ViewID param.Opt[string] `query:"view_id,omitzero" json:"-"`
-	// Exact supplied viewer ID. Missing/null viewer IDs do not match.
+	// Exact viewer ID. The Chunkify player SDK generates one per browser; missing/null
+	// viewer IDs do not match.
 	ViewerID param.Opt[string] `query:"viewer_id,omitzero" json:"-"`
 	// Exact continent code from the local lookup. Missing locations do not match.
 	//
@@ -4235,7 +5569,8 @@ type EventListParams struct {
 	// Any of "chunkify.video.view_started", "chunkify.video.view_snapshot",
 	// "chunkify.video.playback_error", "chunkify.video.view_ended",
 	// "chunkify.video.playback_state_changed", "chunkify.video.rendition_changed",
-	// "chunkify.video.seek_completed".
+	// "chunkify.video.seek_completed", "chunkify.video.subtitle_changed",
+	// "chunkify.video.playback_rate_changed".
 	EventName EventListParamsEventName `query:"event_name,omitzero" json:"-"`
 	// Sort direction. Events and videos default to asc; views default to desc. Events
 	// sort by ingestion sequence. Videos and views sort by sort_by with missing values
@@ -4289,6 +5624,8 @@ const (
 	EventListParamsEventNameChunkifyVideoPlaybackStateChanged EventListParamsEventName = "chunkify.video.playback_state_changed"
 	EventListParamsEventNameChunkifyVideoRenditionChanged     EventListParamsEventName = "chunkify.video.rendition_changed"
 	EventListParamsEventNameChunkifyVideoSeekCompleted        EventListParamsEventName = "chunkify.video.seek_completed"
+	EventListParamsEventNameChunkifyVideoSubtitleChanged      EventListParamsEventName = "chunkify.video.subtitle_changed"
+	EventListParamsEventNameChunkifyVideoPlaybackRateChanged  EventListParamsEventName = "chunkify.video.playback_rate_changed"
 )
 
 // Sort direction. Events and videos default to asc; views default to desc. Events
