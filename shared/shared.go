@@ -16,6 +16,82 @@ type paramUnion = param.APIUnion
 // aliased to make [param.APIObject] private when embedding
 type paramObj = param.APIObject
 
+type CustomDimensions map[string]CustomDimensionUnion
+
+// CustomDimensionUnion contains all possible properties and values from [string],
+// [float64], [bool].
+//
+// Use the methods beginning with 'As' to cast the union to one of its variants.
+//
+// If the underlying value is not a json object, one of the following properties
+// will be valid: OfString OfFloat OfBool]
+type CustomDimensionUnion struct {
+	// This field will be present if the value is a [string] instead of an object.
+	OfString string `json:",inline"`
+	// This field will be present if the value is a [float64] instead of an object.
+	OfFloat float64 `json:",inline"`
+	// This field will be present if the value is a [bool] instead of an object.
+	OfBool bool `json:",inline"`
+	JSON   struct {
+		OfString respjson.Field
+		OfFloat  respjson.Field
+		OfBool   respjson.Field
+		raw      string
+	} `json:"-"`
+}
+
+func (u CustomDimensionUnion) AsString() (v string) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u CustomDimensionUnion) AsFloat() (v float64) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+func (u CustomDimensionUnion) AsBool() (v bool) {
+	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
+	return
+}
+
+// Returns the unmodified JSON received from the API
+func (u CustomDimensionUnion) RawJSON() string { return u.JSON.raw }
+
+func (r *CustomDimensionUnion) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type CustomDimensionsParam map[string]CustomDimensionUnionParam
+
+// Only one field can be non-zero.
+//
+// Use [param.IsOmitted] to confirm if a field is set.
+type CustomDimensionUnionParam struct {
+	OfString param.Opt[string]  `json:",omitzero,inline"`
+	OfFloat  param.Opt[float64] `json:",omitzero,inline"`
+	OfBool   param.Opt[bool]    `json:",omitzero,inline"`
+	paramUnion
+}
+
+func (u CustomDimensionUnionParam) MarshalJSON() ([]byte, error) {
+	return param.MarshalUnion(u, u.OfString, u.OfFloat, u.OfBool)
+}
+func (u *CustomDimensionUnionParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, u)
+}
+
+func (u *CustomDimensionUnionParam) asAny() any {
+	if !param.IsOmitted(u.OfString) {
+		return &u.OfString.Value
+	} else if !param.IsOmitted(u.OfFloat) {
+		return &u.OfFloat.Value
+	} else if !param.IsOmitted(u.OfBool) {
+		return &u.OfBool.Value
+	}
+	return nil
+}
+
 // Browser context and locally derived continent/country/city. Request IP addresses
 // are never added to events or stored context.
 type EventContext struct {
@@ -1349,6 +1425,50 @@ func (r *OtlpScope) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+type PlaybackRatePlayingTime struct {
+	PlayingTimeMs float64 `json:"playing_time_ms" api:"required"`
+	// Playback rate, rounded to two decimals.
+	Rate float64 `json:"rate" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		PlayingTimeMs respjson.Field
+		Rate          respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r PlaybackRatePlayingTime) RawJSON() string { return r.JSON.raw }
+func (r *PlaybackRatePlayingTime) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// ToParam converts this PlaybackRatePlayingTime to a PlaybackRatePlayingTimeParam.
+//
+// Warning: the fields of the param type will not be present. ToParam should only
+// be used at the last possible moment before sending a request. Test for this with
+// PlaybackRatePlayingTimeParam.Overrides()
+func (r PlaybackRatePlayingTime) ToParam() PlaybackRatePlayingTimeParam {
+	return param.Override[PlaybackRatePlayingTimeParam](json.RawMessage(r.RawJSON()))
+}
+
+// The properties PlayingTimeMs, Rate are required.
+type PlaybackRatePlayingTimeParam struct {
+	PlayingTimeMs float64 `json:"playing_time_ms" api:"required"`
+	// Playback rate, rounded to two decimals.
+	Rate float64 `json:"rate" api:"required"`
+	paramObj
+}
+
+func (r PlaybackRatePlayingTimeParam) MarshalJSON() (data []byte, err error) {
+	type shadow PlaybackRatePlayingTimeParam
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *PlaybackRatePlayingTimeParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
 type PlaybackScore struct {
 	// Sessions contributing a score, including recorded failures. A per-session result
 	// is zero or one.
@@ -1615,6 +1735,50 @@ type StoredOtlpContextScopeLogs struct {
 // Returns the unmodified JSON received from the API
 func (r StoredOtlpContextScopeLogs) RawJSON() string { return r.JSON.raw }
 func (r *StoredOtlpContextScopeLogs) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+type SubtitlePlayingTime struct {
+	// Subtitle language tag, or null for subtitles off.
+	Language      string  `json:"language" api:"required"`
+	PlayingTimeMs float64 `json:"playing_time_ms" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Language      respjson.Field
+		PlayingTimeMs respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r SubtitlePlayingTime) RawJSON() string { return r.JSON.raw }
+func (r *SubtitlePlayingTime) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// ToParam converts this SubtitlePlayingTime to a SubtitlePlayingTimeParam.
+//
+// Warning: the fields of the param type will not be present. ToParam should only
+// be used at the last possible moment before sending a request. Test for this with
+// SubtitlePlayingTimeParam.Overrides()
+func (r SubtitlePlayingTime) ToParam() SubtitlePlayingTimeParam {
+	return param.Override[SubtitlePlayingTimeParam](json.RawMessage(r.RawJSON()))
+}
+
+// The properties Language, PlayingTimeMs are required.
+type SubtitlePlayingTimeParam struct {
+	// Subtitle language tag, or null for subtitles off.
+	Language      param.Opt[string] `json:"language,omitzero" api:"required"`
+	PlayingTimeMs float64           `json:"playing_time_ms" api:"required"`
+	paramObj
+}
+
+func (r SubtitlePlayingTimeParam) MarshalJSON() (data []byte, err error) {
+	type shadow SubtitlePlayingTimeParam
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *SubtitlePlayingTimeParam) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 

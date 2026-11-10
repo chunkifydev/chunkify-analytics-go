@@ -16,6 +16,34 @@ type paramObj = param.APIObject
 
 type Error = apierror.Error
 
+// Integrator-defined dimensions set once when the view starts: at most 10 keys of
+// 1 to 40 characters a-z, 0-9 and \_, each with text of 1 to 256 characters, a
+// number or a boolean. Reports compare values as text, exactly and
+// case-sensitively: numbers as their JSON text (5, 5.5; send whole numbers without
+// a decimal part, as JavaScript does), booleans as true or false. Only
+// view_started accepts custom. Never put personal data here; use user_id for user
+// identity.
+//
+// This is an alias to an internal type.
+type CustomDimensions = shared.CustomDimensions
+
+// This is an alias to an internal type.
+type CustomDimensionUnion = shared.CustomDimensionUnion
+
+// Integrator-defined dimensions set once when the view starts: at most 10 keys of
+// 1 to 40 characters a-z, 0-9 and \_, each with text of 1 to 256 characters, a
+// number or a boolean. Reports compare values as text, exactly and
+// case-sensitively: numbers as their JSON text (5, 5.5; send whole numbers without
+// a decimal part, as JavaScript does), booleans as true or false. Only
+// view_started accepts custom. Never put personal data here; use user_id for user
+// identity.
+//
+// This is an alias to an internal type.
+type CustomDimensionsParam = shared.CustomDimensionsParam
+
+// This is an alias to an internal type.
+type CustomDimensionUnionParam = shared.CustomDimensionUnionParam
+
 // Browser context and locally derived continent/country/city. Request IP addresses
 // are never added to events or stored context.
 //
@@ -219,6 +247,12 @@ type OtlpResource = shared.OtlpResource
 type OtlpScope = shared.OtlpScope
 
 // This is an alias to an internal type.
+type PlaybackRatePlayingTime = shared.PlaybackRatePlayingTime
+
+// This is an alias to an internal type.
+type PlaybackRatePlayingTimeParam = shared.PlaybackRatePlayingTimeParam
+
+// This is an alias to an internal type.
 type PlaybackScore = shared.PlaybackScore
 
 // This is an alias to an internal type.
@@ -267,6 +301,12 @@ type StoredOtlpContextResourceLogs = shared.StoredOtlpContextResourceLogs
 //
 // This is an alias to an internal type.
 type StoredOtlpContextScopeLogs = shared.StoredOtlpContextScopeLogs
+
+// This is an alias to an internal type.
+type SubtitlePlayingTime = shared.SubtitlePlayingTime
+
+// This is an alias to an internal type.
+type SubtitlePlayingTimeParam = shared.SubtitlePlayingTimeParam
 
 // Playing time in milliseconds from one selected final event or latest snapshot
 // per view. Measured zero is included; missing measurements are excluded.
