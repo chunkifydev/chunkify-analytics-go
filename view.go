@@ -108,7 +108,9 @@ type View struct {
 	RebufferDurationMs float64              `json:"rebuffer_duration_ms" api:"required"`
 	StartedAt          time.Time            `json:"started_at" api:"required" format:"date-time"`
 	StartupTimeMs      float64              `json:"startup_time_ms" api:"required"`
+	UserID             string               `json:"user_id" api:"required"`
 	VideoID            string               `json:"video_id" api:"required"`
+	VideoTitle         string               `json:"video_title" api:"required"`
 	ViewID             string               `json:"view_id" api:"required"`
 	ViewerID           string               `json:"viewer_id" api:"required"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
@@ -124,7 +126,9 @@ type View struct {
 		RebufferDurationMs respjson.Field
 		StartedAt          respjson.Field
 		StartupTimeMs      respjson.Field
+		UserID             respjson.Field
 		VideoID            respjson.Field
+		VideoTitle         respjson.Field
 		ViewID             respjson.Field
 		ViewerID           respjson.Field
 		ExtraFields        map[string]respjson.Field
@@ -229,14 +233,32 @@ type ViewListParams struct {
 	// Metrics use the first retained view start; raw events use each event context.
 	// Missing values do not match.
 	PagePath param.Opt[string] `query:"page_path,omitzero" json:"-"`
+	// Playback rate from 0.01 to 16 with at most two decimals, such as 1, 1.5 or 2;
+	// 2.0 and 2 are the same rate. Metrics use the rate on the first retained view
+	// start; raw events use each event's value.
+	PlaybackRate param.Opt[string] `query:"playback_rate,omitzero" json:"-"`
+	// Exact, case-sensitive, non-blank subtitle language tag, such as fr or en-US; und
+	// for a subtitles track without a language. Metrics use the language showing on
+	// the first retained view start; raw events use each event's value. Views without
+	// subtitles at start do not match.
+	SubtitleLanguage param.Opt[string] `query:"subtitle_language,omitzero" json:"-"`
 	// Exclusive RFC3339 occurrence-time upper bound, with timezone. Summary/video
 	// queries apply it to the selected view_started event.
 	To param.Opt[time.Time] `query:"to,omitzero" format:"date-time" json:"-"`
-	// Exact video ID. Combined with all other filters using AND.
+	// Exact integrator-supplied user ID. Selects views by their start event; event
+	// lists match each event's own value. Missing/null user IDs do not match. Reports
+	// with this filter read one stored row per view.
+	UserID param.Opt[string] `query:"user_id,omitzero" json:"-"`
+	// Exact video ID; must not be blank. Combined with all other filters using AND.
 	VideoID param.Opt[string] `query:"video_id,omitzero" json:"-"`
+	// Exact, case-sensitive video title. Selects views by the title on their first
+	// retained start; event lists match each event's own value. Views without a title
+	// do not match. Reports with this filter read one stored row per view.
+	VideoTitle param.Opt[string] `query:"video_title,omitzero" json:"-"`
 	// Filter one playback attempt by view ID. Metrics use its first retained start.
 	ViewID param.Opt[string] `query:"view_id,omitzero" json:"-"`
-	// Exact supplied viewer ID. Missing/null viewer IDs do not match.
+	// Exact viewer ID. The Chunkify player SDK generates one per browser; missing/null
+	// viewer IDs do not match.
 	ViewerID param.Opt[string] `query:"viewer_id,omitzero" json:"-"`
 	// Exact continent code from the local lookup. Missing locations do not match.
 	//
