@@ -16,6 +16,35 @@ type paramObj = param.APIObject
 
 type Error = apierror.Error
 
+// Browser and device information. The Chunkify player sends every field, with null
+// for unavailable measurements. Other integrations may omit any field except
+// schema_version. Extra properties are preserved.
+//
+// This is an alias to an internal type.
+type BrowserContext = shared.BrowserContext
+
+// This is an alias to an internal type.
+type BrowserContextDeviceType = shared.BrowserContextDeviceType
+
+// Equals "desktop"
+const BrowserContextDeviceTypeDesktop = shared.BrowserContextDeviceTypeDesktop
+
+// Equals "mobile"
+const BrowserContextDeviceTypeMobile = shared.BrowserContextDeviceTypeMobile
+
+// Equals "tablet"
+const BrowserContextDeviceTypeTablet = shared.BrowserContextDeviceTypeTablet
+
+// Equals "unknown"
+const BrowserContextDeviceTypeUnknown = shared.BrowserContextDeviceTypeUnknown
+
+// Browser and device information. The Chunkify player sends every field, with null
+// for unavailable measurements. Other integrations may omit any field except
+// schema_version. Extra properties are preserved.
+//
+// This is an alias to an internal type.
+type BrowserContextParam = shared.BrowserContextParam
+
 // Integrator-defined dimensions set once when the view starts: at most 10 keys of
 // 1 to 40 characters a-z, 0-9 and \_, each with text of 1 to 256 characters, a
 // number or a boolean. Reports compare values as text, exactly and
