@@ -46,6 +46,10 @@ type Client struct {
 	Retention RetentionService
 	// Private retained-event and view-cohort queries.
 	Renditions RenditionService
+	// Private retained-event and view-cohort queries.
+	Subtitles SubtitleService
+	// Private retained-event and view-cohort queries.
+	PlaybackRates PlaybackRateService
 }
 
 // DefaultClientOptions read from the environment (CHUNKIFY_ANALYTICS_PUBLIC_KEY,
@@ -101,6 +105,8 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 	r.Exports = NewExportService(opts...)
 	r.Retention = NewRetentionService(opts...)
 	r.Renditions = NewRenditionService(opts...)
+	r.Subtitles = NewSubtitleService(opts...)
+	r.PlaybackRates = NewPlaybackRateService(opts...)
 
 	return
 }

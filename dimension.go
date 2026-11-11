@@ -71,8 +71,7 @@ func (r *DimensionService) ListValuesAutoPaging(ctx context.Context, dimension D
 }
 
 type DimensionValues struct {
-	// Any of "browser_name", "os_name", "device_type", "video_id", "viewer_id",
-	// "continent", "country", "city", "page_origin", "page_path".
+	// One custom dimension's values, such as custom.plan.
 	Dimension  DimensionValuesDimension `json:"dimension" api:"required"`
 	NextCursor string                   `json:"next_cursor" api:"required"`
 	Values     []DimensionValuesValue   `json:"values" api:"required"`
@@ -95,16 +94,21 @@ func (r *DimensionValues) UnmarshalJSON(data []byte) error {
 type DimensionValuesDimension string
 
 const (
-	DimensionValuesDimensionBrowserName DimensionValuesDimension = "browser_name"
-	DimensionValuesDimensionOsName      DimensionValuesDimension = "os_name"
-	DimensionValuesDimensionDeviceType  DimensionValuesDimension = "device_type"
-	DimensionValuesDimensionVideoID     DimensionValuesDimension = "video_id"
-	DimensionValuesDimensionViewerID    DimensionValuesDimension = "viewer_id"
-	DimensionValuesDimensionContinent   DimensionValuesDimension = "continent"
-	DimensionValuesDimensionCountry     DimensionValuesDimension = "country"
-	DimensionValuesDimensionCity        DimensionValuesDimension = "city"
-	DimensionValuesDimensionPageOrigin  DimensionValuesDimension = "page_origin"
-	DimensionValuesDimensionPagePath    DimensionValuesDimension = "page_path"
+	DimensionValuesDimensionBrowserName      DimensionValuesDimension = "browser_name"
+	DimensionValuesDimensionOsName           DimensionValuesDimension = "os_name"
+	DimensionValuesDimensionDeviceType       DimensionValuesDimension = "device_type"
+	DimensionValuesDimensionVideoID          DimensionValuesDimension = "video_id"
+	DimensionValuesDimensionViewerID         DimensionValuesDimension = "viewer_id"
+	DimensionValuesDimensionUserID           DimensionValuesDimension = "user_id"
+	DimensionValuesDimensionVideoTitle       DimensionValuesDimension = "video_title"
+	DimensionValuesDimensionContinent        DimensionValuesDimension = "continent"
+	DimensionValuesDimensionCountry          DimensionValuesDimension = "country"
+	DimensionValuesDimensionCity             DimensionValuesDimension = "city"
+	DimensionValuesDimensionPageOrigin       DimensionValuesDimension = "page_origin"
+	DimensionValuesDimensionPagePath         DimensionValuesDimension = "page_path"
+	DimensionValuesDimensionSubtitleLanguage DimensionValuesDimension = "subtitle_language"
+	DimensionValuesDimensionPlaybackRate     DimensionValuesDimension = "playback_rate"
+	DimensionValuesDimensionCustomKeys       DimensionValuesDimension = "custom_keys"
 )
 
 type DimensionValuesValue struct {
@@ -156,14 +160,32 @@ type DimensionListValuesParams struct {
 	// Metrics use the first retained view start; raw events use each event context.
 	// Missing values do not match.
 	PagePath param.Opt[string] `query:"page_path,omitzero" json:"-"`
+	// Playback rate from 0.01 to 16 with at most two decimals, such as 1, 1.5 or 2;
+	// 2.0 and 2 are the same rate. Metrics use the rate on the first retained view
+	// start; raw events use each event's value.
+	PlaybackRate param.Opt[string] `query:"playback_rate,omitzero" json:"-"`
+	// Exact, case-sensitive, non-blank subtitle language tag, such as fr or en-US; und
+	// for a subtitles track without a language. Metrics use the language showing on
+	// the first retained view start; raw events use each event's value. Views without
+	// subtitles at start do not match.
+	SubtitleLanguage param.Opt[string] `query:"subtitle_language,omitzero" json:"-"`
 	// Exclusive RFC3339 occurrence-time upper bound, with timezone. Summary/video
 	// queries apply it to the selected view_started event.
 	To param.Opt[time.Time] `query:"to,omitzero" format:"date-time" json:"-"`
-	// Exact video ID. Combined with all other filters using AND.
+	// Exact integrator-supplied user ID. Selects views by their start event; event
+	// lists match each event's own value. Missing/null user IDs do not match. Reports
+	// with this filter read one stored row per view.
+	UserID param.Opt[string] `query:"user_id,omitzero" json:"-"`
+	// Exact video ID; must not be blank. Combined with all other filters using AND.
 	VideoID param.Opt[string] `query:"video_id,omitzero" json:"-"`
+	// Exact, case-sensitive video title. Selects views by the title on their first
+	// retained start; event lists match each event's own value. Views without a title
+	// do not match. Reports with this filter read one stored row per view.
+	VideoTitle param.Opt[string] `query:"video_title,omitzero" json:"-"`
 	// Filter one playback attempt by view ID. Metrics use its first retained start.
 	ViewID param.Opt[string] `query:"view_id,omitzero" json:"-"`
-	// Exact supplied viewer ID. Missing/null viewer IDs do not match.
+	// Exact viewer ID. The Chunkify player SDK generates one per browser; missing/null
+	// viewer IDs do not match.
 	ViewerID param.Opt[string] `query:"viewer_id,omitzero" json:"-"`
 	// Exact continent code from the local lookup. Missing locations do not match.
 	//
@@ -188,16 +210,21 @@ func (r DimensionListValuesParams) URLQuery() (v url.Values, err error) {
 type DimensionListValuesParamsDimension string
 
 const (
-	DimensionListValuesParamsDimensionBrowserName DimensionListValuesParamsDimension = "browser_name"
-	DimensionListValuesParamsDimensionOsName      DimensionListValuesParamsDimension = "os_name"
-	DimensionListValuesParamsDimensionDeviceType  DimensionListValuesParamsDimension = "device_type"
-	DimensionListValuesParamsDimensionVideoID     DimensionListValuesParamsDimension = "video_id"
-	DimensionListValuesParamsDimensionViewerID    DimensionListValuesParamsDimension = "viewer_id"
-	DimensionListValuesParamsDimensionContinent   DimensionListValuesParamsDimension = "continent"
-	DimensionListValuesParamsDimensionCountry     DimensionListValuesParamsDimension = "country"
-	DimensionListValuesParamsDimensionCity        DimensionListValuesParamsDimension = "city"
-	DimensionListValuesParamsDimensionPageOrigin  DimensionListValuesParamsDimension = "page_origin"
-	DimensionListValuesParamsDimensionPagePath    DimensionListValuesParamsDimension = "page_path"
+	DimensionListValuesParamsDimensionBrowserName      DimensionListValuesParamsDimension = "browser_name"
+	DimensionListValuesParamsDimensionOsName           DimensionListValuesParamsDimension = "os_name"
+	DimensionListValuesParamsDimensionDeviceType       DimensionListValuesParamsDimension = "device_type"
+	DimensionListValuesParamsDimensionVideoID          DimensionListValuesParamsDimension = "video_id"
+	DimensionListValuesParamsDimensionViewerID         DimensionListValuesParamsDimension = "viewer_id"
+	DimensionListValuesParamsDimensionUserID           DimensionListValuesParamsDimension = "user_id"
+	DimensionListValuesParamsDimensionVideoTitle       DimensionListValuesParamsDimension = "video_title"
+	DimensionListValuesParamsDimensionContinent        DimensionListValuesParamsDimension = "continent"
+	DimensionListValuesParamsDimensionCountry          DimensionListValuesParamsDimension = "country"
+	DimensionListValuesParamsDimensionCity             DimensionListValuesParamsDimension = "city"
+	DimensionListValuesParamsDimensionPageOrigin       DimensionListValuesParamsDimension = "page_origin"
+	DimensionListValuesParamsDimensionPagePath         DimensionListValuesParamsDimension = "page_path"
+	DimensionListValuesParamsDimensionSubtitleLanguage DimensionListValuesParamsDimension = "subtitle_language"
+	DimensionListValuesParamsDimensionPlaybackRate     DimensionListValuesParamsDimension = "playback_rate"
+	DimensionListValuesParamsDimensionCustomKeys       DimensionListValuesParamsDimension = "custom_keys"
 )
 
 // Exact continent code from the local lookup. Missing locations do not match.
