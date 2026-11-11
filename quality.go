@@ -180,8 +180,7 @@ func (r *QualityStartupTimeMs) UnmarshalJSON(data []byte) error {
 }
 
 type QualityBreakdownPage struct {
-	// Any of "browser_name", "os_name", "device_type", "continent", "country", "city",
-	// "page_origin", "page_path".
+	// A custom dimension key, such as custom.plan.
 	GroupBy    QualityBreakdownPageGroupBy `json:"group_by" api:"required"`
 	Groups     []QualityBreakdownPageGroup `json:"groups" api:"required"`
 	NextCursor string                      `json:"next_cursor" api:"required"`
@@ -204,14 +203,18 @@ func (r *QualityBreakdownPage) UnmarshalJSON(data []byte) error {
 type QualityBreakdownPageGroupBy string
 
 const (
-	QualityBreakdownPageGroupByBrowserName QualityBreakdownPageGroupBy = "browser_name"
-	QualityBreakdownPageGroupByOsName      QualityBreakdownPageGroupBy = "os_name"
-	QualityBreakdownPageGroupByDeviceType  QualityBreakdownPageGroupBy = "device_type"
-	QualityBreakdownPageGroupByContinent   QualityBreakdownPageGroupBy = "continent"
-	QualityBreakdownPageGroupByCountry     QualityBreakdownPageGroupBy = "country"
-	QualityBreakdownPageGroupByCity        QualityBreakdownPageGroupBy = "city"
-	QualityBreakdownPageGroupByPageOrigin  QualityBreakdownPageGroupBy = "page_origin"
-	QualityBreakdownPageGroupByPagePath    QualityBreakdownPageGroupBy = "page_path"
+	QualityBreakdownPageGroupByBrowserName      QualityBreakdownPageGroupBy = "browser_name"
+	QualityBreakdownPageGroupByOsName           QualityBreakdownPageGroupBy = "os_name"
+	QualityBreakdownPageGroupByDeviceType       QualityBreakdownPageGroupBy = "device_type"
+	QualityBreakdownPageGroupByContinent        QualityBreakdownPageGroupBy = "continent"
+	QualityBreakdownPageGroupByCountry          QualityBreakdownPageGroupBy = "country"
+	QualityBreakdownPageGroupByCity             QualityBreakdownPageGroupBy = "city"
+	QualityBreakdownPageGroupByPageOrigin       QualityBreakdownPageGroupBy = "page_origin"
+	QualityBreakdownPageGroupByPagePath         QualityBreakdownPageGroupBy = "page_path"
+	QualityBreakdownPageGroupBySubtitleLanguage QualityBreakdownPageGroupBy = "subtitle_language"
+	QualityBreakdownPageGroupByPlaybackRate     QualityBreakdownPageGroupBy = "playback_rate"
+	QualityBreakdownPageGroupByVideoTitle       QualityBreakdownPageGroupBy = "video_title"
+	QualityBreakdownPageGroupByUserID           QualityBreakdownPageGroupBy = "user_id"
 )
 
 type QualityBreakdownPageGroup struct {
@@ -319,14 +322,32 @@ type QualityGetParams struct {
 	// Metrics use the first retained view start; raw events use each event context.
 	// Missing values do not match.
 	PagePath param.Opt[string] `query:"page_path,omitzero" json:"-"`
+	// Playback rate from 0.01 to 16 with at most two decimals, such as 1, 1.5 or 2;
+	// 2.0 and 2 are the same rate. Metrics use the rate on the first retained view
+	// start; raw events use each event's value.
+	PlaybackRate param.Opt[string] `query:"playback_rate,omitzero" json:"-"`
+	// Exact, case-sensitive, non-blank subtitle language tag, such as fr or en-US; und
+	// for a subtitles track without a language. Metrics use the language showing on
+	// the first retained view start; raw events use each event's value. Views without
+	// subtitles at start do not match.
+	SubtitleLanguage param.Opt[string] `query:"subtitle_language,omitzero" json:"-"`
 	// Exclusive RFC3339 occurrence-time upper bound, with timezone. Summary/video
 	// queries apply it to the selected view_started event.
 	To param.Opt[time.Time] `query:"to,omitzero" format:"date-time" json:"-"`
-	// Exact video ID. Combined with all other filters using AND.
+	// Exact integrator-supplied user ID. Selects views by their start event; event
+	// lists match each event's own value. Missing/null user IDs do not match. Reports
+	// with this filter read one stored row per view.
+	UserID param.Opt[string] `query:"user_id,omitzero" json:"-"`
+	// Exact video ID; must not be blank. Combined with all other filters using AND.
 	VideoID param.Opt[string] `query:"video_id,omitzero" json:"-"`
+	// Exact, case-sensitive video title. Selects views by the title on their first
+	// retained start; event lists match each event's own value. Views without a title
+	// do not match. Reports with this filter read one stored row per view.
+	VideoTitle param.Opt[string] `query:"video_title,omitzero" json:"-"`
 	// Filter one playback attempt by view ID. Metrics use its first retained start.
 	ViewID param.Opt[string] `query:"view_id,omitzero" json:"-"`
-	// Exact supplied viewer ID. Missing/null viewer IDs do not match.
+	// Exact viewer ID. The Chunkify player SDK generates one per browser; missing/null
+	// viewer IDs do not match.
 	ViewerID param.Opt[string] `query:"viewer_id,omitzero" json:"-"`
 	// Exact continent code from the local lookup. Missing locations do not match.
 	//
@@ -344,10 +365,11 @@ type QualityGetParams struct {
 	// name; filter by country to avoid combining names shared by different countries.
 	// Page groups use the first retained start even if playback continues after
 	// navigation. Filter by page_origin when grouping page_path to distinguish
-	// identical paths on different sites.
-	//
-	// Any of "browser_name", "os_name", "device_type", "continent", "country", "city",
-	// "page_origin", "page_path".
+	// identical paths on different sites. video_title groups by the title on each
+	// view's first retained start, so a renamed video counts each view under the title
+	// it started with. user_id groups by the user ID on each view's first retained
+	// start. Use custom.<key>, such as custom.plan, to group by a custom dimension;
+	// views without the key form the null group.
 	GroupBy QualityGetParamsGroupBy `query:"group_by,omitzero" json:"-"`
 	paramObj
 }
@@ -391,16 +413,24 @@ const (
 // name; filter by country to avoid combining names shared by different countries.
 // Page groups use the first retained start even if playback continues after
 // navigation. Filter by page_origin when grouping page_path to distinguish
-// identical paths on different sites.
+// identical paths on different sites. video_title groups by the title on each
+// view's first retained start, so a renamed video counts each view under the title
+// it started with. user_id groups by the user ID on each view's first retained
+// start. Use custom.<key>, such as custom.plan, to group by a custom dimension;
+// views without the key form the null group.
 type QualityGetParamsGroupBy string
 
 const (
-	QualityGetParamsGroupByBrowserName QualityGetParamsGroupBy = "browser_name"
-	QualityGetParamsGroupByOsName      QualityGetParamsGroupBy = "os_name"
-	QualityGetParamsGroupByDeviceType  QualityGetParamsGroupBy = "device_type"
-	QualityGetParamsGroupByContinent   QualityGetParamsGroupBy = "continent"
-	QualityGetParamsGroupByCountry     QualityGetParamsGroupBy = "country"
-	QualityGetParamsGroupByCity        QualityGetParamsGroupBy = "city"
-	QualityGetParamsGroupByPageOrigin  QualityGetParamsGroupBy = "page_origin"
-	QualityGetParamsGroupByPagePath    QualityGetParamsGroupBy = "page_path"
+	QualityGetParamsGroupByBrowserName      QualityGetParamsGroupBy = "browser_name"
+	QualityGetParamsGroupByOsName           QualityGetParamsGroupBy = "os_name"
+	QualityGetParamsGroupByDeviceType       QualityGetParamsGroupBy = "device_type"
+	QualityGetParamsGroupByContinent        QualityGetParamsGroupBy = "continent"
+	QualityGetParamsGroupByCountry          QualityGetParamsGroupBy = "country"
+	QualityGetParamsGroupByCity             QualityGetParamsGroupBy = "city"
+	QualityGetParamsGroupByPageOrigin       QualityGetParamsGroupBy = "page_origin"
+	QualityGetParamsGroupByPagePath         QualityGetParamsGroupBy = "page_path"
+	QualityGetParamsGroupBySubtitleLanguage QualityGetParamsGroupBy = "subtitle_language"
+	QualityGetParamsGroupByPlaybackRate     QualityGetParamsGroupBy = "playback_rate"
+	QualityGetParamsGroupByVideoTitle       QualityGetParamsGroupBy = "video_title"
+	QualityGetParamsGroupByUserID           QualityGetParamsGroupBy = "user_id"
 )

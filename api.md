@@ -1,10 +1,14 @@
 # Shared Params Types
 
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#CustomDimensionsParam">CustomDimensionsParam</a>
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#PlaybackRatePlayingTimeParam">PlaybackRatePlayingTimeParam</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#PlayedRangeParam">PlayedRangeParam</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#RenditionPlayingTimeParam">RenditionPlayingTimeParam</a>
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#SubtitlePlayingTimeParam">SubtitlePlayingTimeParam</a>
 
 # Shared Response Types
 
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#CustomDimensions">CustomDimensions</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#EventContext">EventContext</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#MetricCountRatio">MetricCountRatio</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#OtlpAnyValue">OtlpAnyValue</a>
@@ -14,12 +18,14 @@
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#OtlpLogRecord">OtlpLogRecord</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#OtlpResource">OtlpResource</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#OtlpScope">OtlpScope</a>
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#PlaybackRatePlayingTime">PlaybackRatePlayingTime</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#PlaybackScore">PlaybackScore</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#PlayedRange">PlayedRange</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#ProgressReached">ProgressReached</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#RenditionPlayingTime">RenditionPlayingTime</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#StartupOutcomes">StartupOutcomes</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#StoredOtlpContext">StoredOtlpContext</a>
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#SubtitlePlayingTime">SubtitlePlayingTime</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#WatchTimeDistribution">WatchTimeDistribution</a>
 
 # Health
@@ -38,9 +44,11 @@ Params Types:
 
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#AnalyticsEventUnionParam">AnalyticsEventUnionParam</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#PlaybackErrorParam">PlaybackErrorParam</a>
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#PlaybackRateChangedParam">PlaybackRateChangedParam</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#PlaybackStateChangedParam">PlaybackStateChangedParam</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#RenditionChangedParam">RenditionChangedParam</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#SeekCompletedParam">SeekCompletedParam</a>
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#SubtitleChangedParam">SubtitleChangedParam</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#ViewEndedParam">ViewEndedParam</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#ViewSnapshotParam">ViewSnapshotParam</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#ViewStartedParam">ViewStartedParam</a>
@@ -52,10 +60,12 @@ Response Types:
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#NativeCreated">NativeCreated</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#NativeDuplicate">NativeDuplicate</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#PlaybackError">PlaybackError</a>
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#PlaybackRateChanged">PlaybackRateChanged</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#PlaybackStateChanged">PlaybackStateChanged</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#RenditionChanged">RenditionChanged</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#SeekCompleted">SeekCompleted</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#StoredEvent">StoredEvent</a>
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#SubtitleChanged">SubtitleChanged</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#ViewEnded">ViewEnded</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#ViewSnapshot">ViewSnapshot</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#ViewStarted">ViewStarted</a>
@@ -211,7 +221,7 @@ Response Types:
 
 Methods:
 
-- <code title="get /v1/dimensions/{dimension}">client.Dimensions.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#DimensionService.ListValues">ListValues</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, dimension <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#DimensionListValuesParamsDimension">DimensionListValuesParamsDimension</a>, query <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#DimensionListValuesParams">DimensionListValuesParams</a>) (\*<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/packages/pagination">pagination</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/packages/pagination#DimensionValuesPage">DimensionValuesPage</a>[<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#DimensionValuesValue">DimensionValuesValue</a>], <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+- <code title="get /v1/dimensions/{dimension}">client.Dimensions.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#DimensionService.ListValues">ListValues</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, dimension DimensionListValuesParamsDimension, query <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#DimensionListValuesParams">DimensionListValuesParams</a>) (\*<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/packages/pagination">pagination</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/packages/pagination#DimensionValuesPage">DimensionValuesPage</a>[<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#DimensionValuesValue">DimensionValuesValue</a>], <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 
 # Exports
 
@@ -252,3 +262,25 @@ Response Types:
 Methods:
 
 - <code title="get /v1/renditions">client.Renditions.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#RenditionService.Get">Get</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, query <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#RenditionGetParams">RenditionGetParams</a>) (\*<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#RenditionReport">RenditionReport</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+
+# Subtitles
+
+Response Types:
+
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#SubtitleMetric">SubtitleMetric</a>
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#SubtitleReport">SubtitleReport</a>
+
+Methods:
+
+- <code title="get /v1/subtitles">client.Subtitles.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#SubtitleService.Get">Get</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, query <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#SubtitleGetParams">SubtitleGetParams</a>) (\*<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#SubtitleReport">SubtitleReport</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+
+# PlaybackRates
+
+Response Types:
+
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#PlaybackRateMetric">PlaybackRateMetric</a>
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#PlaybackRateReport">PlaybackRateReport</a>
+
+Methods:
+
+- <code title="get /v1/playback-rates">client.PlaybackRates.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#PlaybackRateService.Get">Get</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, query <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#PlaybackRateGetParams">PlaybackRateGetParams</a>) (\*<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#PlaybackRateReport">PlaybackRateReport</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
