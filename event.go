@@ -92,6 +92,8 @@ func (r *EventService) Ingest(ctx context.Context, params EventIngestParams, opt
 // [PlaybackStateChanged], [RenditionChanged], [SeekCompleted], [SubtitleChanged],
 // [PlaybackRateChanged].
 //
+// Use the [AnalyticsEventUnion.AsAny] method to switch on the variant.
+//
 // Use the methods beginning with 'As' to cast the union to one of its variants.
 type AnalyticsEventUnion struct {
 	ConnectorName            string  `json:"connector_name"`
@@ -108,10 +110,15 @@ type AnalyticsEventUnion struct {
 	// [ViewEndedErrorCodeUnion], [PlaybackStateChangedErrorCodeUnion],
 	// [RenditionChangedErrorCodeUnion], [SeekCompletedErrorCodeUnion],
 	// [SubtitleChangedErrorCodeUnion], [PlaybackRateChangedErrorCodeUnion]
-	ErrorCode                   AnalyticsEventUnionErrorCode  `json:"error_code"`
-	ErrorFatal                  bool                          `json:"error_fatal"`
-	ErrorPlayheadSeconds        float64                       `json:"error_playhead_seconds"`
-	EventID                     string                        `json:"event_id"`
+	ErrorCode            AnalyticsEventUnionErrorCode `json:"error_code"`
+	ErrorFatal           bool                         `json:"error_fatal"`
+	ErrorPlayheadSeconds float64                      `json:"error_playhead_seconds"`
+	EventID              string                       `json:"event_id"`
+	// Any of "chunkify.video.view_started", "chunkify.video.view_snapshot",
+	// "chunkify.video.playback_error", "chunkify.video.view_ended",
+	// "chunkify.video.playback_state_changed", "chunkify.video.rendition_changed",
+	// "chunkify.video.seek_completed", "chunkify.video.subtitle_changed",
+	// "chunkify.video.playback_rate_changed".
 	EventName                   string                        `json:"event_name"`
 	FirstVideoFrameTimeMs       float64                       `json:"first_video_frame_time_ms"`
 	FurthestProgressRatio       float64                       `json:"furthest_progress_ratio"`
@@ -147,7 +154,8 @@ type AnalyticsEventUnion struct {
 	VideoID                     string                        `json:"video_id"`
 	ViewID                      string                        `json:"view_id"`
 	ViewerID                    string                        `json:"viewer_id"`
-	BrowserContext              any                           `json:"browser_context"`
+	// This field is from variant [ViewStarted].
+	BrowserContext shared.BrowserContext `json:"browser_context"`
 	// This field is from variant [ViewStarted].
 	Custom                  shared.CustomDimensions          `json:"custom"`
 	PlaybackRate            float64                          `json:"playback_rate"`
@@ -284,6 +292,61 @@ type AnalyticsEventUnion struct {
 		PreviousPlaybackRate        respjson.Field
 		raw                         string
 	} `json:"-"`
+}
+
+// anyAnalyticsEvent is implemented by each variant of [AnalyticsEventUnion] to add
+// type safety for the return type of [AnalyticsEventUnion.AsAny]
+type anyAnalyticsEvent interface {
+	implAnalyticsEventUnion()
+}
+
+func (ViewStarted) implAnalyticsEventUnion()          {}
+func (ViewSnapshot) implAnalyticsEventUnion()         {}
+func (PlaybackError) implAnalyticsEventUnion()        {}
+func (ViewEnded) implAnalyticsEventUnion()            {}
+func (PlaybackStateChanged) implAnalyticsEventUnion() {}
+func (RenditionChanged) implAnalyticsEventUnion()     {}
+func (SeekCompleted) implAnalyticsEventUnion()        {}
+func (SubtitleChanged) implAnalyticsEventUnion()      {}
+func (PlaybackRateChanged) implAnalyticsEventUnion()  {}
+
+// Use the following switch statement to find the correct variant
+//
+//	switch variant := AnalyticsEventUnion.AsAny().(type) {
+//	case chunkifyanalytics.ViewStarted:
+//	case chunkifyanalytics.ViewSnapshot:
+//	case chunkifyanalytics.PlaybackError:
+//	case chunkifyanalytics.ViewEnded:
+//	case chunkifyanalytics.PlaybackStateChanged:
+//	case chunkifyanalytics.RenditionChanged:
+//	case chunkifyanalytics.SeekCompleted:
+//	case chunkifyanalytics.SubtitleChanged:
+//	case chunkifyanalytics.PlaybackRateChanged:
+//	default:
+//	  fmt.Errorf("no variant present")
+//	}
+func (u AnalyticsEventUnion) AsAny() anyAnalyticsEvent {
+	switch u.EventName {
+	case "chunkify.video.view_started":
+		return u.AsViewStarted()
+	case "chunkify.video.view_snapshot":
+		return u.AsViewSnapshot()
+	case "chunkify.video.playback_error":
+		return u.AsPlaybackError()
+	case "chunkify.video.view_ended":
+		return u.AsViewEnded()
+	case "chunkify.video.playback_state_changed":
+		return u.AsPlaybackStateChanged()
+	case "chunkify.video.rendition_changed":
+		return u.AsRenditionChanged()
+	case "chunkify.video.seek_completed":
+		return u.AsSeekCompleted()
+	case "chunkify.video.subtitle_changed":
+		return u.AsSubtitleChanged()
+	case "chunkify.video.playback_rate_changed":
+		return u.AsPlaybackRateChanged()
+	}
+	return nil
 }
 
 func (u AnalyticsEventUnion) AsViewStarted() (v ViewStarted) {
@@ -1898,7 +1961,7 @@ func (u AnalyticsEventUnionParam) GetRenditionPlayingTime() []shared.RenditionPl
 
 // Returns a pointer to the underlying variant's BrowserContext property, if
 // present.
-func (u AnalyticsEventUnionParam) GetBrowserContext() *any {
+func (u AnalyticsEventUnionParam) GetBrowserContext() *shared.BrowserContextParam {
 	if vt := u.OfViewStarted; vt != nil {
 		return &vt.BrowserContext
 	} else if vt := u.OfViewSnapshot; vt != nil {
@@ -1963,6 +2026,21 @@ func (u AnalyticsEventUnionParam) GetSubtitlePlayingTime() []shared.SubtitlePlay
 		return vt.SubtitlePlayingTime
 	}
 	return nil
+}
+
+func init() {
+	apijson.RegisterUnion[AnalyticsEventUnionParam](
+		"event_name",
+		apijson.Discriminator[ViewStartedParam]("chunkify.video.view_started"),
+		apijson.Discriminator[ViewSnapshotParam]("chunkify.video.view_snapshot"),
+		apijson.Discriminator[PlaybackErrorParam]("chunkify.video.playback_error"),
+		apijson.Discriminator[ViewEndedParam]("chunkify.video.view_ended"),
+		apijson.Discriminator[PlaybackStateChangedParam]("chunkify.video.playback_state_changed"),
+		apijson.Discriminator[RenditionChangedParam]("chunkify.video.rendition_changed"),
+		apijson.Discriminator[SeekCompletedParam]("chunkify.video.seek_completed"),
+		apijson.Discriminator[SubtitleChangedParam]("chunkify.video.subtitle_changed"),
+		apijson.Discriminator[PlaybackRateChangedParam]("chunkify.video.playback_rate_changed"),
+	)
 }
 
 type EventPage struct {
@@ -2075,8 +2153,10 @@ type PlaybackError struct {
 	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
 	// the page's localStorage.
 	ViewerID string `json:"viewer_id" api:"required"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContext `json:"browser_context" api:"nullable"`
 	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
 	// to 16. Optional.
 	PlaybackRate float64 `json:"playback_rate" api:"nullable"`
@@ -2356,8 +2436,10 @@ type PlaybackErrorParam struct {
 	// Cumulative playing time per subtitle language for this attempt, null language
 	// meaning subtitles off. At most 32 entries. Optional.
 	SubtitlePlayingTime []shared.SubtitlePlayingTimeParam `json:"subtitle_playing_time,omitzero"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context,omitzero"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContextParam `json:"browser_context,omitzero"`
 	// This field can be elided, and will marshal its zero value as
 	// "chunkify.video.playback_error".
 	EventName constant.ChunkifyVideoPlaybackError `json:"event_name" default:"chunkify.video.playback_error"`
@@ -2440,8 +2522,10 @@ type PlaybackRateChanged struct {
 	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
 	// the page's localStorage.
 	ViewerID string `json:"viewer_id" api:"required"`
-	// Optional browser information supplied by the player.
-	BrowserContext              any                           `json:"browser_context"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext              shared.BrowserContext         `json:"browser_context" api:"nullable"`
 	DeliveryRequestCount        float64                       `json:"delivery_request_count" api:"nullable"`
 	DeliveryThroughputBps       float64                       `json:"delivery_throughput_bps" api:"nullable"`
 	DeliveryTransferredBytes    float64                       `json:"delivery_transferred_bytes" api:"nullable"`
@@ -2704,8 +2788,10 @@ type PlaybackRateChangedParam struct {
 	SeekCount              param.Opt[float64]                            `json:"seek_count,omitzero"`
 	SeekDurationMs         param.Opt[float64]                            `json:"seek_duration_ms,omitzero"`
 	RenditionPlayingTime   []shared.RenditionPlayingTimeParam            `json:"rendition_playing_time,omitzero"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context,omitzero"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContextParam `json:"browser_context,omitzero"`
 	// This field can be elided, and will marshal its zero value as
 	// "chunkify.video.playback_rate_changed".
 	EventName constant.ChunkifyVideoPlaybackRateChanged `json:"event_name" default:"chunkify.video.playback_rate_changed"`
@@ -2791,8 +2877,10 @@ type PlaybackStateChanged struct {
 	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
 	// the page's localStorage.
 	ViewerID string `json:"viewer_id" api:"required"`
-	// Optional browser information supplied by the player.
-	BrowserContext              any                           `json:"browser_context"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext              shared.BrowserContext         `json:"browser_context" api:"nullable"`
 	DeliveryRequestCount        float64                       `json:"delivery_request_count" api:"nullable"`
 	DeliveryThroughputBps       float64                       `json:"delivery_throughput_bps" api:"nullable"`
 	DeliveryTransferredBytes    float64                       `json:"delivery_transferred_bytes" api:"nullable"`
@@ -3087,8 +3175,10 @@ type PlaybackStateChangedParam struct {
 	SeekCount              param.Opt[float64]                             `json:"seek_count,omitzero"`
 	SeekDurationMs         param.Opt[float64]                             `json:"seek_duration_ms,omitzero"`
 	RenditionPlayingTime   []shared.RenditionPlayingTimeParam             `json:"rendition_playing_time,omitzero"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context,omitzero"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContextParam `json:"browser_context,omitzero"`
 	// This field can be elided, and will marshal its zero value as
 	// "chunkify.video.playback_state_changed".
 	EventName constant.ChunkifyVideoPlaybackStateChanged `json:"event_name" default:"chunkify.video.playback_state_changed"`
@@ -3179,8 +3269,10 @@ type RenditionChanged struct {
 	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
 	// the page's localStorage.
 	ViewerID string `json:"viewer_id" api:"required"`
-	// Optional browser information supplied by the player.
-	BrowserContext           any                           `json:"browser_context"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext           shared.BrowserContext         `json:"browser_context" api:"nullable"`
 	DeliveryRequestCount     float64                       `json:"delivery_request_count" api:"nullable"`
 	DeliveryThroughputBps    float64                       `json:"delivery_throughput_bps" api:"nullable"`
 	DeliveryTransferredBytes float64                       `json:"delivery_transferred_bytes" api:"nullable"`
@@ -3447,8 +3539,10 @@ type RenditionChangedParam struct {
 	SeekCount              param.Opt[float64]                         `json:"seek_count,omitzero"`
 	SeekDurationMs         param.Opt[float64]                         `json:"seek_duration_ms,omitzero"`
 	RenditionPlayingTime   []shared.RenditionPlayingTimeParam         `json:"rendition_playing_time,omitzero"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context,omitzero"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContextParam `json:"browser_context,omitzero"`
 	// This field can be elided, and will marshal its zero value as
 	// "chunkify.video.rendition_changed".
 	EventName constant.ChunkifyVideoRenditionChanged `json:"event_name" default:"chunkify.video.rendition_changed"`
@@ -3541,8 +3635,10 @@ type SeekCompleted struct {
 	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
 	// the page's localStorage.
 	ViewerID string `json:"viewer_id" api:"required"`
-	// Optional browser information supplied by the player.
-	BrowserContext              any                           `json:"browser_context"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext              shared.BrowserContext         `json:"browser_context" api:"nullable"`
 	DeliveryRequestCount        float64                       `json:"delivery_request_count" api:"nullable"`
 	DeliveryThroughputBps       float64                       `json:"delivery_throughput_bps" api:"nullable"`
 	DeliveryTransferredBytes    float64                       `json:"delivery_transferred_bytes" api:"nullable"`
@@ -3860,8 +3956,10 @@ type SeekCompletedParam struct {
 	SeekCount              param.Opt[float64]                      `json:"seek_count,omitzero"`
 	SeekDurationMs         param.Opt[float64]                      `json:"seek_duration_ms,omitzero"`
 	RenditionPlayingTime   []shared.RenditionPlayingTimeParam      `json:"rendition_playing_time,omitzero"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context,omitzero"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContextParam `json:"browser_context,omitzero"`
 	// This field can be elided, and will marshal its zero value as
 	// "chunkify.video.seek_completed".
 	EventName constant.ChunkifyVideoSeekCompleted `json:"event_name" default:"chunkify.video.seek_completed"`
@@ -3979,8 +4077,10 @@ type SubtitleChanged struct {
 	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
 	// the page's localStorage.
 	ViewerID string `json:"viewer_id" api:"required"`
-	// Optional browser information supplied by the player.
-	BrowserContext              any                           `json:"browser_context"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext              shared.BrowserContext         `json:"browser_context" api:"nullable"`
 	DeliveryRequestCount        float64                       `json:"delivery_request_count" api:"nullable"`
 	DeliveryThroughputBps       float64                       `json:"delivery_throughput_bps" api:"nullable"`
 	DeliveryTransferredBytes    float64                       `json:"delivery_transferred_bytes" api:"nullable"`
@@ -4243,8 +4343,10 @@ type SubtitleChangedParam struct {
 	SeekCount              param.Opt[float64]                        `json:"seek_count,omitzero"`
 	SeekDurationMs         param.Opt[float64]                        `json:"seek_duration_ms,omitzero"`
 	RenditionPlayingTime   []shared.RenditionPlayingTimeParam        `json:"rendition_playing_time,omitzero"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context,omitzero"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContextParam `json:"browser_context,omitzero"`
 	// This field can be elided, and will marshal its zero value as
 	// "chunkify.video.subtitle_changed".
 	EventName constant.ChunkifyVideoSubtitleChanged `json:"event_name" default:"chunkify.video.subtitle_changed"`
@@ -4348,8 +4450,10 @@ type ViewEnded struct {
 	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
 	// the page's localStorage.
 	ViewerID string `json:"viewer_id" api:"required"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContext `json:"browser_context" api:"nullable"`
 	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
 	// to 16. Optional.
 	PlaybackRate float64 `json:"playback_rate" api:"nullable"`
@@ -4629,8 +4733,10 @@ type ViewEndedParam struct {
 	// Cumulative playing time per subtitle language for this attempt, null language
 	// meaning subtitles off. At most 32 entries. Optional.
 	SubtitlePlayingTime []shared.SubtitlePlayingTimeParam `json:"subtitle_playing_time,omitzero"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context,omitzero"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContextParam `json:"browser_context,omitzero"`
 	// This field can be elided, and will marshal its zero value as
 	// "chunkify.video.view_ended".
 	EventName constant.ChunkifyVideoViewEnded `json:"event_name" default:"chunkify.video.view_ended"`
@@ -4734,8 +4840,10 @@ type ViewSnapshot struct {
 	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
 	// the page's localStorage.
 	ViewerID string `json:"viewer_id" api:"required"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContext `json:"browser_context" api:"nullable"`
 	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
 	// to 16. Optional.
 	PlaybackRate float64 `json:"playback_rate" api:"nullable"`
@@ -5015,8 +5123,10 @@ type ViewSnapshotParam struct {
 	// Cumulative playing time per subtitle language for this attempt, null language
 	// meaning subtitles off. At most 32 entries. Optional.
 	SubtitlePlayingTime []shared.SubtitlePlayingTimeParam `json:"subtitle_playing_time,omitzero"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context,omitzero"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContextParam `json:"browser_context,omitzero"`
 	// This field can be elided, and will marshal its zero value as
 	// "chunkify.video.view_snapshot".
 	EventName constant.ChunkifyVideoViewSnapshot `json:"event_name" default:"chunkify.video.view_snapshot"`
@@ -5120,8 +5230,10 @@ type ViewStarted struct {
 	// Anonymous browser identifier generated by the Chunkify player SDK and stored in
 	// the page's localStorage.
 	ViewerID string `json:"viewer_id" api:"required"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContext `json:"browser_context" api:"nullable"`
 	// Integrator-defined dimensions set once when the view starts: at most 10 keys of
 	// 1 to 40 characters a-z, 0-9 and \_, each with text of 1 to 256 characters, a
 	// number or a boolean. Reports compare values as text, exactly and
@@ -5410,8 +5522,10 @@ type ViewStartedParam struct {
 	// Cumulative playing time per subtitle language for this attempt, null language
 	// meaning subtitles off. At most 32 entries. Optional.
 	SubtitlePlayingTime []shared.SubtitlePlayingTimeParam `json:"subtitle_playing_time,omitzero"`
-	// Optional browser information supplied by the player.
-	BrowserContext any `json:"browser_context,omitzero"`
+	// Browser and device information. The Chunkify player sends every field, with null
+	// for unavailable measurements. Other integrations may omit any field except
+	// schema_version. Extra properties are preserved.
+	BrowserContext shared.BrowserContextParam `json:"browser_context,omitzero"`
 	// Integrator-defined dimensions set once when the view starts: at most 10 keys of
 	// 1 to 40 characters a-z, 0-9 and \_, each with text of 1 to 256 characters, a
 	// number or a boolean. Reports compare values as text, exactly and
