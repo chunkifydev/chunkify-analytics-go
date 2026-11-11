@@ -16,6 +16,134 @@ type paramUnion = param.APIUnion
 // aliased to make [param.APIObject] private when embedding
 type paramObj = param.APIObject
 
+// Browser and device information. The Chunkify player sends every field, with null
+// for unavailable measurements. Other integrations may omit any field except
+// schema_version. Extra properties are preserved.
+type BrowserContext struct {
+	SchemaVersion  float64 `json:"schema_version" api:"required"`
+	BrowserName    string  `json:"browser_name" api:"nullable"`
+	BrowserVersion string  `json:"browser_version" api:"nullable"`
+	DeviceFamily   string  `json:"device_family" api:"nullable"`
+	// Any of "desktop", "mobile", "tablet", "unknown".
+	DeviceType     BrowserContextDeviceType `json:"device_type"`
+	Language       string                   `json:"language" api:"nullable"`
+	LanguagePrefix string                   `json:"language_prefix" api:"nullable"`
+	OsName         string                   `json:"os_name" api:"nullable"`
+	OsVersion      string                   `json:"os_version" api:"nullable"`
+	// Current document HTTP(S) origin, without credentials. Null when unavailable or
+	// longer than 2048 characters.
+	PageOrigin string `json:"page_origin" api:"nullable"`
+	// Current document pathname, without query parameters or fragment. Null when
+	// unavailable or longer than 2048 characters. Paths may contain
+	// application-defined identifiers.
+	PagePath              string  `json:"page_path" api:"nullable"`
+	PixelRatio            float64 `json:"pixel_ratio" api:"nullable"`
+	ScreenHeightPx        int64   `json:"screen_height_px" api:"nullable"`
+	ScreenWidthPx         int64   `json:"screen_width_px" api:"nullable"`
+	Timezone              string  `json:"timezone" api:"nullable"`
+	TimezoneOffsetMinutes int64   `json:"timezone_offset_minutes" api:"nullable"`
+	UserAgent             string  `json:"user_agent" api:"nullable"`
+	ViewportHeightPx      int64   `json:"viewport_height_px" api:"nullable"`
+	ViewportWidthPx       int64   `json:"viewport_width_px" api:"nullable"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		SchemaVersion         respjson.Field
+		BrowserName           respjson.Field
+		BrowserVersion        respjson.Field
+		DeviceFamily          respjson.Field
+		DeviceType            respjson.Field
+		Language              respjson.Field
+		LanguagePrefix        respjson.Field
+		OsName                respjson.Field
+		OsVersion             respjson.Field
+		PageOrigin            respjson.Field
+		PagePath              respjson.Field
+		PixelRatio            respjson.Field
+		ScreenHeightPx        respjson.Field
+		ScreenWidthPx         respjson.Field
+		Timezone              respjson.Field
+		TimezoneOffsetMinutes respjson.Field
+		UserAgent             respjson.Field
+		ViewportHeightPx      respjson.Field
+		ViewportWidthPx       respjson.Field
+		ExtraFields           map[string]respjson.Field
+		raw                   string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r BrowserContext) RawJSON() string { return r.JSON.raw }
+func (r *BrowserContext) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// ToParam converts this BrowserContext to a BrowserContextParam.
+//
+// Warning: the fields of the param type will not be present. ToParam should only
+// be used at the last possible moment before sending a request. Test for this with
+// BrowserContextParam.Overrides()
+func (r BrowserContext) ToParam() BrowserContextParam {
+	return param.Override[BrowserContextParam](json.RawMessage(r.RawJSON()))
+}
+
+type BrowserContextDeviceType string
+
+const (
+	BrowserContextDeviceTypeDesktop BrowserContextDeviceType = "desktop"
+	BrowserContextDeviceTypeMobile  BrowserContextDeviceType = "mobile"
+	BrowserContextDeviceTypeTablet  BrowserContextDeviceType = "tablet"
+	BrowserContextDeviceTypeUnknown BrowserContextDeviceType = "unknown"
+)
+
+// Browser and device information. The Chunkify player sends every field, with null
+// for unavailable measurements. Other integrations may omit any field except
+// schema_version. Extra properties are preserved.
+//
+// The property SchemaVersion is required.
+type BrowserContextParam struct {
+	BrowserName    param.Opt[string] `json:"browser_name,omitzero"`
+	BrowserVersion param.Opt[string] `json:"browser_version,omitzero"`
+	DeviceFamily   param.Opt[string] `json:"device_family,omitzero"`
+	Language       param.Opt[string] `json:"language,omitzero"`
+	LanguagePrefix param.Opt[string] `json:"language_prefix,omitzero"`
+	OsName         param.Opt[string] `json:"os_name,omitzero"`
+	OsVersion      param.Opt[string] `json:"os_version,omitzero"`
+	// Current document HTTP(S) origin, without credentials. Null when unavailable or
+	// longer than 2048 characters.
+	PageOrigin param.Opt[string] `json:"page_origin,omitzero"`
+	// Current document pathname, without query parameters or fragment. Null when
+	// unavailable or longer than 2048 characters. Paths may contain
+	// application-defined identifiers.
+	PagePath              param.Opt[string]  `json:"page_path,omitzero"`
+	PixelRatio            param.Opt[float64] `json:"pixel_ratio,omitzero"`
+	ScreenHeightPx        param.Opt[int64]   `json:"screen_height_px,omitzero"`
+	ScreenWidthPx         param.Opt[int64]   `json:"screen_width_px,omitzero"`
+	Timezone              param.Opt[string]  `json:"timezone,omitzero"`
+	TimezoneOffsetMinutes param.Opt[int64]   `json:"timezone_offset_minutes,omitzero"`
+	UserAgent             param.Opt[string]  `json:"user_agent,omitzero"`
+	ViewportHeightPx      param.Opt[int64]   `json:"viewport_height_px,omitzero"`
+	ViewportWidthPx       param.Opt[int64]   `json:"viewport_width_px,omitzero"`
+	// Any of "desktop", "mobile", "tablet", "unknown".
+	DeviceType BrowserContextDeviceType `json:"device_type,omitzero"`
+	// This field can be elided, and will marshal its zero value as 1.
+	SchemaVersion float64 `json:"schema_version,omitzero" api:"required"`
+	paramObj
+}
+
+func (r BrowserContextParam) MarshalJSON() (data []byte, err error) {
+	type shadow BrowserContextParam
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *BrowserContextParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func init() {
+	apijson.RegisterFieldValidator[BrowserContextParam](
+		"schema_version", 1,
+	)
+}
+
 type CustomDimensions map[string]CustomDimensionUnion
 
 // CustomDimensionUnion contains all possible properties and values from [string],

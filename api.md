@@ -1,5 +1,6 @@
 # Shared Params Types
 
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#BrowserContextParam">BrowserContextParam</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#CustomDimensionsParam">CustomDimensionsParam</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#PlaybackRatePlayingTimeParam">PlaybackRatePlayingTimeParam</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#PlayedRangeParam">PlayedRangeParam</a>
@@ -8,6 +9,7 @@
 
 # Shared Response Types
 
+- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#BrowserContext">BrowserContext</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#CustomDimensions">CustomDimensions</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#EventContext">EventContext</a>
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go/shared#MetricCountRatio">MetricCountRatio</a>
