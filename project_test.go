@@ -29,11 +29,9 @@ func TestProjectUpdateWithOptionalParams(t *testing.T) {
 		option.WithAdminKey("My Admin Key"),
 	)
 	_, err := client.Project.Update(context.TODO(), chunkifyanalytics.ProjectUpdateParams{
-		ProjectUpdate: chunkifyanalytics.ProjectUpdateParam{
-			AllowedOrigins:   []string{"https://customer.example"},
-			Name:             chunkifyanalytics.String("Customer website"),
-			RetentionSeconds: chunkifyanalytics.Int(604800),
-		},
+		AllowedOrigins:   []string{"https://customer.example"},
+		Name:             chunkifyanalytics.String("Customer website"),
+		RetentionSeconds: chunkifyanalytics.Int(604800),
 	})
 	if err != nil {
 		var apierr *chunkifyanalytics.Error
