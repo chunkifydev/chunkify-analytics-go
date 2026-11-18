@@ -29,11 +29,9 @@ func TestProjectKeyNewWithOptionalParams(t *testing.T) {
 		option.WithAdminKey("My Admin Key"),
 	)
 	_, err := client.Project.Keys.New(context.TODO(), chunkifyanalytics.ProjectKeyNewParams{
-		CreateProjectKeyRequest: chunkifyanalytics.CreateProjectKeyRequestParam{
-			Name:       "Dashboard",
-			Permission: chunkifyanalytics.CreateProjectKeyRequestPermissionSecret,
-			ReadOnly:   chunkifyanalytics.Bool(true),
-		},
+		Name:       "Dashboard",
+		Permission: chunkifyanalytics.ProjectKeyNewParamsPermissionSecret,
+		ReadOnly:   chunkifyanalytics.Bool(true),
 	})
 	if err != nil {
 		var apierr *chunkifyanalytics.Error
