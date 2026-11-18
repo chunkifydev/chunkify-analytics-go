@@ -143,11 +143,6 @@ Methods:
 
 # Project
 
-Params Types:
-
-- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#CreateProjectKeyRequestParam">CreateProjectKeyRequestParam</a>
-- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#ProjectUpdateParam">ProjectUpdateParam</a>
-
 Response Types:
 
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#CreatedProjectKey">CreatedProjectKey</a>
@@ -171,10 +166,6 @@ Methods:
 - <code title="post /v1/project/keys/{key_id}/rotate">client.Project.Keys.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#ProjectKeyService.Rotate">Rotate</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, keyID <a href="https://pkg.go.dev/builtin#string">string</a>) (\*<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#RotatedProjectKey">RotatedProjectKey</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 
 # Admin
-
-Params Types:
-
-- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#CreateProjectRequestParam">CreateProjectRequestParam</a>
 
 Response Types:
 
@@ -230,7 +221,6 @@ Methods:
 Params Types:
 
 - <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#ExportQueryParam">ExportQueryParam</a>
-- <a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go">chunkifyanalytics</a>.<a href="https://pkg.go.dev/github.com/chunkifydev/chunkify-analytics-go#ExportRequestParam">ExportRequestParam</a>
 
 Response Types:
 
