@@ -29,11 +29,9 @@ func TestAdminNewProjectWithOptionalParams(t *testing.T) {
 		option.WithAdminKey("My Admin Key"),
 	)
 	_, err := client.Admin.NewProject(context.TODO(), chunkifyanalytics.AdminNewProjectParams{
-		CreateProjectRequest: chunkifyanalytics.CreateProjectRequestParam{
-			Name:             "Customer website",
-			AllowedOrigins:   []string{"https://customer.example"},
-			RetentionSeconds: chunkifyanalytics.Int(2592000),
-		},
+		Name:             "Customer website",
+		AllowedOrigins:   []string{"https://customer.example"},
+		RetentionSeconds: chunkifyanalytics.Int(2592000),
 	})
 	if err != nil {
 		var apierr *chunkifyanalytics.Error
