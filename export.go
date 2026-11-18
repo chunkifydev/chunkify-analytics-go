@@ -13,7 +13,6 @@ import (
 
 	"github.com/chunkifydev/chunkify-analytics-go/internal/apijson"
 	"github.com/chunkifydev/chunkify-analytics-go/internal/apiquery"
-	shimjson "github.com/chunkifydev/chunkify-analytics-go/internal/encoding/json"
 	"github.com/chunkifydev/chunkify-analytics-go/internal/requestconfig"
 	"github.com/chunkifydev/chunkify-analytics-go/option"
 	"github.com/chunkifydev/chunkify-analytics-go/packages/param"
@@ -311,12 +310,11 @@ const (
 	ExportQuerySortByRebufferDurationMs ExportQuerySortBy = "rebuffer_duration_ms"
 )
 
-// The property Resource is required.
-type ExportRequestParam struct {
+type ExportNewParams struct {
 	// Any of "summary", "quality", "engagement", "timeseries", "videos", "events",
 	// "views", "errors", "dimensions", "renditions", "subtitles", "playback_rates",
 	// "retention".
-	Resource ExportRequestResource `json:"resource,omitzero" api:"required"`
+	Resource ExportNewParamsResource `json:"resource,omitzero" api:"required"`
 	// CSV column names in output order. Omit for all columns. Get the available names
 	// from GET /v1/exports using the same resource, kind and group_by. Unknown names,
 	// duplicates and empty selections are rejected.
@@ -325,43 +323,31 @@ type ExportRequestParam struct {
 	paramObj
 }
 
-func (r ExportRequestParam) MarshalJSON() (data []byte, err error) {
-	type shadow ExportRequestParam
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *ExportRequestParam) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-type ExportRequestResource string
-
-const (
-	ExportRequestResourceSummary       ExportRequestResource = "summary"
-	ExportRequestResourceQuality       ExportRequestResource = "quality"
-	ExportRequestResourceEngagement    ExportRequestResource = "engagement"
-	ExportRequestResourceTimeseries    ExportRequestResource = "timeseries"
-	ExportRequestResourceVideos        ExportRequestResource = "videos"
-	ExportRequestResourceEvents        ExportRequestResource = "events"
-	ExportRequestResourceViews         ExportRequestResource = "views"
-	ExportRequestResourceErrors        ExportRequestResource = "errors"
-	ExportRequestResourceDimensions    ExportRequestResource = "dimensions"
-	ExportRequestResourceRenditions    ExportRequestResource = "renditions"
-	ExportRequestResourceSubtitles     ExportRequestResource = "subtitles"
-	ExportRequestResourcePlaybackRates ExportRequestResource = "playback_rates"
-	ExportRequestResourceRetention     ExportRequestResource = "retention"
-)
-
-type ExportNewParams struct {
-	ExportRequest ExportRequestParam
-	paramObj
-}
-
 func (r ExportNewParams) MarshalJSON() (data []byte, err error) {
-	return shimjson.Marshal(r.ExportRequest)
+	type shadow ExportNewParams
+	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *ExportNewParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+type ExportNewParamsResource string
+
+const (
+	ExportNewParamsResourceSummary       ExportNewParamsResource = "summary"
+	ExportNewParamsResourceQuality       ExportNewParamsResource = "quality"
+	ExportNewParamsResourceEngagement    ExportNewParamsResource = "engagement"
+	ExportNewParamsResourceTimeseries    ExportNewParamsResource = "timeseries"
+	ExportNewParamsResourceVideos        ExportNewParamsResource = "videos"
+	ExportNewParamsResourceEvents        ExportNewParamsResource = "events"
+	ExportNewParamsResourceViews         ExportNewParamsResource = "views"
+	ExportNewParamsResourceErrors        ExportNewParamsResource = "errors"
+	ExportNewParamsResourceDimensions    ExportNewParamsResource = "dimensions"
+	ExportNewParamsResourceRenditions    ExportNewParamsResource = "renditions"
+	ExportNewParamsResourceSubtitles     ExportNewParamsResource = "subtitles"
+	ExportNewParamsResourcePlaybackRates ExportNewParamsResource = "playback_rates"
+	ExportNewParamsResourceRetention     ExportNewParamsResource = "retention"
+)
 
 type ExportListColumnsParams struct {
 	// Report whose CSV columns to list.

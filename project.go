@@ -8,7 +8,6 @@ import (
 	"slices"
 
 	"github.com/chunkifydev/chunkify-analytics-go/internal/apijson"
-	shimjson "github.com/chunkifydev/chunkify-analytics-go/internal/encoding/json"
 	"github.com/chunkifydev/chunkify-analytics-go/internal/requestconfig"
 	"github.com/chunkifydev/chunkify-analytics-go/option"
 	"github.com/chunkifydev/chunkify-analytics-go/packages/param"
@@ -61,33 +60,6 @@ func (r *ProjectService) Delete(ctx context.Context, opts ...option.RequestOptio
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodDelete, path, nil, &res, opts...)
 	return res, err
 }
-
-// The properties Name, Permission are required.
-type CreateProjectKeyRequestParam struct {
-	// Key display name, up to 128 UTF-8 bytes. Whitespace-only names are rejected.
-	Name string `json:"name" api:"required"`
-	// Any of "public", "secret".
-	Permission CreateProjectKeyRequestPermission `json:"permission,omitzero" api:"required"`
-	// Only secret keys can be read-only. False grants full project management access
-	// to secret keys; public keys only ingest events.
-	ReadOnly param.Opt[bool] `json:"read_only,omitzero"`
-	paramObj
-}
-
-func (r CreateProjectKeyRequestParam) MarshalJSON() (data []byte, err error) {
-	type shadow CreateProjectKeyRequestParam
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *CreateProjectKeyRequestParam) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
-type CreateProjectKeyRequestPermission string
-
-const (
-	CreateProjectKeyRequestPermissionPublic CreateProjectKeyRequestPermission = "public"
-	CreateProjectKeyRequestPermissionSecret CreateProjectKeyRequestPermission = "secret"
-)
 
 // A newly created key. Save the key value now; later key listings contain only
 // metadata.
@@ -237,25 +209,6 @@ func (r *ProjectKeys) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-type ProjectUpdateParam struct {
-	// Retention by server receipt time, in seconds. 0 disables expiration; null
-	// inherits the installation default. Omission leaves the current setting
-	// unchanged. Applies to existing and new events; removed data cannot be recovered.
-	RetentionSeconds param.Opt[int64]  `json:"retention_seconds,omitzero"`
-	Name             param.Opt[string] `json:"name,omitzero"`
-	// Additional project origins. Shared TOML origins are always included.
-	AllowedOrigins []string `json:"allowed_origins,omitzero"`
-	paramObj
-}
-
-func (r ProjectUpdateParam) MarshalJSON() (data []byte, err error) {
-	type shadow ProjectUpdateParam
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *ProjectUpdateParam) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
 type RotatedProjectKey struct {
 	// New key value. Save it now; it is returned once.
 	Key   string `json:"key" api:"required"`
@@ -296,12 +249,19 @@ const (
 )
 
 type ProjectUpdateParams struct {
-	ProjectUpdate ProjectUpdateParam
+	// Retention by server receipt time, in seconds. 0 disables expiration; null
+	// inherits the installation default. Omission leaves the current setting
+	// unchanged. Applies to existing and new events; removed data cannot be recovered.
+	RetentionSeconds param.Opt[int64]  `json:"retention_seconds,omitzero"`
+	Name             param.Opt[string] `json:"name,omitzero"`
+	// Additional project origins. Shared TOML origins are always included.
+	AllowedOrigins []string `json:"allowed_origins,omitzero"`
 	paramObj
 }
 
 func (r ProjectUpdateParams) MarshalJSON() (data []byte, err error) {
-	return shimjson.Marshal(r.ProjectUpdate)
+	type shadow ProjectUpdateParams
+	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *ProjectUpdateParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)

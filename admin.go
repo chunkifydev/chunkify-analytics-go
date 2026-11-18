@@ -8,7 +8,6 @@ import (
 	"slices"
 
 	"github.com/chunkifydev/chunkify-analytics-go/internal/apijson"
-	shimjson "github.com/chunkifydev/chunkify-analytics-go/internal/encoding/json"
 	"github.com/chunkifydev/chunkify-analytics-go/internal/requestconfig"
 	"github.com/chunkifydev/chunkify-analytics-go/option"
 	"github.com/chunkifydev/chunkify-analytics-go/packages/param"
@@ -50,26 +49,6 @@ func (r *AdminService) NewProject(ctx context.Context, body AdminNewProjectParam
 	return res, err
 }
 
-// The property Name is required.
-type CreateProjectRequestParam struct {
-	// Project display name.
-	Name string `json:"name" api:"required"`
-	// Retention by server receipt time, in seconds. 0 disables expiration; null
-	// inherits the installation default. Omission also inherits the default.
-	RetentionSeconds param.Opt[int64] `json:"retention_seconds,omitzero"`
-	// Additional project origins. Shared TOML origins are always included.
-	AllowedOrigins []string `json:"allowed_origins,omitzero"`
-	paramObj
-}
-
-func (r CreateProjectRequestParam) MarshalJSON() (data []byte, err error) {
-	type shadow CreateProjectRequestParam
-	return param.MarshalObject(r, (*shadow)(&r))
-}
-func (r *CreateProjectRequestParam) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
-}
-
 type CreatedProject struct {
 	// Effective retention in seconds after resolving the installation default. 0
 	// disables expiration.
@@ -108,12 +87,19 @@ func (r *CreatedProject) UnmarshalJSON(data []byte) error {
 }
 
 type AdminNewProjectParams struct {
-	CreateProjectRequest CreateProjectRequestParam
+	// Project display name.
+	Name string `json:"name" api:"required"`
+	// Retention by server receipt time, in seconds. 0 disables expiration; null
+	// inherits the installation default. Omission also inherits the default.
+	RetentionSeconds param.Opt[int64] `json:"retention_seconds,omitzero"`
+	// Additional project origins. Shared TOML origins are always included.
+	AllowedOrigins []string `json:"allowed_origins,omitzero"`
 	paramObj
 }
 
 func (r AdminNewProjectParams) MarshalJSON() (data []byte, err error) {
-	return shimjson.Marshal(r.CreateProjectRequest)
+	type shadow AdminNewProjectParams
+	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *AdminNewProjectParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
