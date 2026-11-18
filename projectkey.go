@@ -10,9 +10,9 @@ import (
 	"slices"
 
 	"github.com/chunkifydev/chunkify-analytics-go/internal/apijson"
-	shimjson "github.com/chunkifydev/chunkify-analytics-go/internal/encoding/json"
 	"github.com/chunkifydev/chunkify-analytics-go/internal/requestconfig"
 	"github.com/chunkifydev/chunkify-analytics-go/option"
+	"github.com/chunkifydev/chunkify-analytics-go/packages/param"
 )
 
 // Project origins and keys.
@@ -78,13 +78,27 @@ func (r *ProjectKeyService) Rotate(ctx context.Context, keyID string, opts ...op
 }
 
 type ProjectKeyNewParams struct {
-	CreateProjectKeyRequest CreateProjectKeyRequestParam
+	// Key display name, up to 128 UTF-8 bytes. Whitespace-only names are rejected.
+	Name string `json:"name" api:"required"`
+	// Any of "public", "secret".
+	Permission ProjectKeyNewParamsPermission `json:"permission,omitzero" api:"required"`
+	// Only secret keys can be read-only. False grants full project management access
+	// to secret keys; public keys only ingest events.
+	ReadOnly param.Opt[bool] `json:"read_only,omitzero"`
 	paramObj
 }
 
 func (r ProjectKeyNewParams) MarshalJSON() (data []byte, err error) {
-	return shimjson.Marshal(r.CreateProjectKeyRequest)
+	type shadow ProjectKeyNewParams
+	return param.MarshalObject(r, (*shadow)(&r))
 }
 func (r *ProjectKeyNewParams) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
+
+type ProjectKeyNewParamsPermission string
+
+const (
+	ProjectKeyNewParamsPermissionPublic ProjectKeyNewParamsPermission = "public"
+	ProjectKeyNewParamsPermissionSecret ProjectKeyNewParamsPermission = "secret"
+)
