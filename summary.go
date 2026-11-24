@@ -109,6 +109,7 @@ const (
 	MetricsBreakdownPageGroupByPagePath         MetricsBreakdownPageGroupBy = "page_path"
 	MetricsBreakdownPageGroupBySubtitleLanguage MetricsBreakdownPageGroupBy = "subtitle_language"
 	MetricsBreakdownPageGroupByPlaybackRate     MetricsBreakdownPageGroupBy = "playback_rate"
+	MetricsBreakdownPageGroupByDeliveryFormat   MetricsBreakdownPageGroupBy = "delivery_format"
 	MetricsBreakdownPageGroupByVideoTitle       MetricsBreakdownPageGroupBy = "video_title"
 	MetricsBreakdownPageGroupByUserID           MetricsBreakdownPageGroupBy = "user_id"
 )
@@ -238,6 +239,14 @@ type SummaryGetParams struct {
 	//
 	// Any of "AF", "AN", "AS", "EU", "NA", "OC", "SA".
 	Continent SummaryGetParamsContinent `query:"continent,omitzero" json:"-"`
+	// Delivery format on the first retained view start: hls for HLS streams, file for
+	// a single media file such as an MP4 rendition. Metrics use the first retained
+	// view start; raw events use each event's value. Views whose SDK did not report it
+	// do not match. connector_name is not a substitute: Safari plays HLS natively and
+	// reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat SummaryGetParamsDeliveryFormat `query:"delivery_format,omitzero" json:"-"`
 	// Exact device class. unknown matches an explicit unknown value.
 	//
 	// Any of "desktop", "mobile", "tablet", "unknown".
@@ -252,9 +261,11 @@ type SummaryGetParams struct {
 	// navigation. Filter by page_origin when grouping page_path to distinguish
 	// identical paths on different sites. video_title groups by the title on each
 	// view's first retained start, so a renamed video counts each view under the title
-	// it started with. user_id groups by the user ID on each view's first retained
-	// start. Use custom.<key>, such as custom.plan, to group by a custom dimension;
-	// views without the key form the null group.
+	// it started with. delivery_format groups by hls or file on each view's first
+	// retained start; views from SDKs that do not report it form the null group.
+	// user_id groups by the user ID on each view's first retained start. Use
+	// custom.<key>, such as custom.plan, to group by a custom dimension; views without
+	// the key form the null group.
 	GroupBy SummaryGetParamsGroupBy `query:"group_by,omitzero" json:"-"`
 	paramObj
 }
@@ -280,6 +291,18 @@ const (
 	SummaryGetParamsContinentSa SummaryGetParamsContinent = "SA"
 )
 
+// Delivery format on the first retained view start: hls for HLS streams, file for
+// a single media file such as an MP4 rendition. Metrics use the first retained
+// view start; raw events use each event's value. Views whose SDK did not report it
+// do not match. connector_name is not a substitute: Safari plays HLS natively and
+// reports html-media.
+type SummaryGetParamsDeliveryFormat string
+
+const (
+	SummaryGetParamsDeliveryFormatHls  SummaryGetParamsDeliveryFormat = "hls"
+	SummaryGetParamsDeliveryFormatFile SummaryGetParamsDeliveryFormat = "file"
+)
+
 // Exact device class. unknown matches an explicit unknown value.
 type SummaryGetParamsDeviceType string
 
@@ -300,9 +323,11 @@ const (
 // navigation. Filter by page_origin when grouping page_path to distinguish
 // identical paths on different sites. video_title groups by the title on each
 // view's first retained start, so a renamed video counts each view under the title
-// it started with. user_id groups by the user ID on each view's first retained
-// start. Use custom.<key>, such as custom.plan, to group by a custom dimension;
-// views without the key form the null group.
+// it started with. delivery_format groups by hls or file on each view's first
+// retained start; views from SDKs that do not report it form the null group.
+// user_id groups by the user ID on each view's first retained start. Use
+// custom.<key>, such as custom.plan, to group by a custom dimension; views without
+// the key form the null group.
 type SummaryGetParamsGroupBy string
 
 const (
@@ -316,6 +341,7 @@ const (
 	SummaryGetParamsGroupByPagePath         SummaryGetParamsGroupBy = "page_path"
 	SummaryGetParamsGroupBySubtitleLanguage SummaryGetParamsGroupBy = "subtitle_language"
 	SummaryGetParamsGroupByPlaybackRate     SummaryGetParamsGroupBy = "playback_rate"
+	SummaryGetParamsGroupByDeliveryFormat   SummaryGetParamsGroupBy = "delivery_format"
 	SummaryGetParamsGroupByVideoTitle       SummaryGetParamsGroupBy = "video_title"
 	SummaryGetParamsGroupByUserID           SummaryGetParamsGroupBy = "user_id"
 )

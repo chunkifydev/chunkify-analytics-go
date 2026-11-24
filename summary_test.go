@@ -35,6 +35,7 @@ func TestSummaryGetWithOptionalParams(t *testing.T) {
 		Continent:        chunkifyanalytics.SummaryGetParamsContinentAf,
 		Country:          chunkifyanalytics.String("SE"),
 		Cursor:           chunkifyanalytics.String("cursor"),
+		DeliveryFormat:   chunkifyanalytics.SummaryGetParamsDeliveryFormatHls,
 		DeviceType:       chunkifyanalytics.SummaryGetParamsDeviceTypeDesktop,
 		From:             chunkifyanalytics.Time(time.Now()),
 		GroupBy:          chunkifyanalytics.SummaryGetParamsGroupByBrowserName,
