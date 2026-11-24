@@ -34,6 +34,7 @@ func TestRenditionGetWithOptionalParams(t *testing.T) {
 		City:             chunkifyanalytics.String("x"),
 		Continent:        chunkifyanalytics.RenditionGetParamsContinentAf,
 		Country:          chunkifyanalytics.String("SE"),
+		DeliveryFormat:   chunkifyanalytics.RenditionGetParamsDeliveryFormatHls,
 		DeviceType:       chunkifyanalytics.RenditionGetParamsDeviceTypeDesktop,
 		From:             chunkifyanalytics.Time(time.Now()),
 		Limit:            chunkifyanalytics.Int(1),

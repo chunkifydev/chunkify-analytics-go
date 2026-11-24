@@ -35,6 +35,7 @@ func TestRetentionGetWithOptionalParams(t *testing.T) {
 		City:             chunkifyanalytics.String("x"),
 		Continent:        chunkifyanalytics.RetentionGetParamsContinentAf,
 		Country:          chunkifyanalytics.String("SE"),
+		DeliveryFormat:   chunkifyanalytics.RetentionGetParamsDeliveryFormatHls,
 		DeviceType:       chunkifyanalytics.RetentionGetParamsDeviceTypeDesktop,
 		From:             chunkifyanalytics.Time(time.Now()),
 		OsName:           chunkifyanalytics.String("x"),

@@ -34,6 +34,7 @@ func TestPlaybackRateGetWithOptionalParams(t *testing.T) {
 		City:             chunkifyanalytics.String("x"),
 		Continent:        chunkifyanalytics.PlaybackRateGetParamsContinentAf,
 		Country:          chunkifyanalytics.String("SE"),
+		DeliveryFormat:   chunkifyanalytics.PlaybackRateGetParamsDeliveryFormatHls,
 		DeviceType:       chunkifyanalytics.PlaybackRateGetParamsDeviceTypeDesktop,
 		From:             chunkifyanalytics.Time(time.Now()),
 		Limit:            chunkifyanalytics.Int(1),

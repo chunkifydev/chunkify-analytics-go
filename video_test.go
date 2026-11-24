@@ -35,6 +35,7 @@ func TestVideoListWithOptionalParams(t *testing.T) {
 		Continent:        chunkifyanalytics.VideoListParamsContinentAf,
 		Country:          chunkifyanalytics.String("SE"),
 		Cursor:           chunkifyanalytics.String("cursor"),
+		DeliveryFormat:   chunkifyanalytics.VideoListParamsDeliveryFormatHls,
 		DeviceType:       chunkifyanalytics.VideoListParamsDeviceTypeDesktop,
 		From:             chunkifyanalytics.Time(time.Now()),
 		Limit:            chunkifyanalytics.Int(1),

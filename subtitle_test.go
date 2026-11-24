@@ -34,6 +34,7 @@ func TestSubtitleGetWithOptionalParams(t *testing.T) {
 		City:             chunkifyanalytics.String("x"),
 		Continent:        chunkifyanalytics.SubtitleGetParamsContinentAf,
 		Country:          chunkifyanalytics.String("SE"),
+		DeliveryFormat:   chunkifyanalytics.SubtitleGetParamsDeliveryFormatHls,
 		DeviceType:       chunkifyanalytics.SubtitleGetParamsDeviceTypeDesktop,
 		From:             chunkifyanalytics.Time(time.Now()),
 		Limit:            chunkifyanalytics.Int(1),
