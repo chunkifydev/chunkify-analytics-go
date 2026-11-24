@@ -194,6 +194,14 @@ type RenditionGetParams struct {
 	//
 	// Any of "AF", "AN", "AS", "EU", "NA", "OC", "SA".
 	Continent RenditionGetParamsContinent `query:"continent,omitzero" json:"-"`
+	// Delivery format on the first retained view start: hls for HLS streams, file for
+	// a single media file such as an MP4 rendition. Metrics use the first retained
+	// view start; raw events use each event's value. Views whose SDK did not report it
+	// do not match. connector_name is not a substitute: Safari plays HLS natively and
+	// reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat RenditionGetParamsDeliveryFormat `query:"delivery_format,omitzero" json:"-"`
 	// Exact device class. unknown matches an explicit unknown value.
 	//
 	// Any of "desktop", "mobile", "tablet", "unknown".
@@ -220,6 +228,18 @@ const (
 	RenditionGetParamsContinentNa RenditionGetParamsContinent = "NA"
 	RenditionGetParamsContinentOc RenditionGetParamsContinent = "OC"
 	RenditionGetParamsContinentSa RenditionGetParamsContinent = "SA"
+)
+
+// Delivery format on the first retained view start: hls for HLS streams, file for
+// a single media file such as an MP4 rendition. Metrics use the first retained
+// view start; raw events use each event's value. Views whose SDK did not report it
+// do not match. connector_name is not a substitute: Safari plays HLS natively and
+// reports html-media.
+type RenditionGetParamsDeliveryFormat string
+
+const (
+	RenditionGetParamsDeliveryFormatHls  RenditionGetParamsDeliveryFormat = "hls"
+	RenditionGetParamsDeliveryFormatFile RenditionGetParamsDeliveryFormat = "file"
 )
 
 // Exact device class. unknown matches an explicit unknown value.

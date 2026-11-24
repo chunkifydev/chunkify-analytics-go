@@ -67,6 +67,7 @@ func TestViewListWithOptionalParams(t *testing.T) {
 		Continent:        chunkifyanalytics.ViewListParamsContinentAf,
 		Country:          chunkifyanalytics.String("SE"),
 		Cursor:           chunkifyanalytics.String("cursor"),
+		DeliveryFormat:   chunkifyanalytics.ViewListParamsDeliveryFormatHls,
 		DeviceType:       chunkifyanalytics.ViewListParamsDeviceTypeDesktop,
 		From:             chunkifyanalytics.Time(time.Now()),
 		HasFatalError:    chunkifyanalytics.Bool(true),

@@ -158,6 +158,7 @@ type AnalyticsEventUnion struct {
 	BrowserContext shared.BrowserContext `json:"browser_context"`
 	// This field is from variant [ViewStarted].
 	Custom                  shared.CustomDimensions          `json:"custom"`
+	DeliveryFormat          string                           `json:"delivery_format"`
 	PlaybackRate            float64                          `json:"playback_rate"`
 	PlaybackRatePlayingTime []shared.PlaybackRatePlayingTime `json:"playback_rate_playing_time"`
 	PlayedRanges            []shared.PlayedRange             `json:"played_ranges"`
@@ -168,9 +169,8 @@ type AnalyticsEventUnion struct {
 	VideoTitle              string                           `json:"video_title"`
 	VisibilityState         string                           `json:"visibility_state"`
 	// This field is from variant [PlaybackStateChanged].
-	FromState PlaybackStateChangedFromState `json:"from_state"`
-	// This field is from variant [PlaybackStateChanged].
-	PreviousStateDurationMs float64 `json:"previous_state_duration_ms"`
+	FromState               PlaybackStateChangedFromState `json:"from_state"`
+	PreviousStateDurationMs float64                       `json:"previous_state_duration_ms"`
 	// This field is from variant [PlaybackStateChanged].
 	ToState PlaybackStateChangedToState `json:"to_state"`
 	// This field is from variant [RenditionChanged].
@@ -260,6 +260,7 @@ type AnalyticsEventUnion struct {
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
 		Custom                      respjson.Field
+		DeliveryFormat              respjson.Field
 		PlaybackRate                respjson.Field
 		PlaybackRatePlayingTime     respjson.Field
 		PlayedRanges                respjson.Field
@@ -501,14 +502,6 @@ func (u AnalyticsEventUnionParam) GetCustom() shared.CustomDimensionsParam {
 func (u AnalyticsEventUnionParam) GetFromState() *string {
 	if vt := u.OfPlaybackStateChanged; vt != nil {
 		return (*string)(&vt.FromState)
-	}
-	return nil
-}
-
-// Returns a pointer to the underlying variant's property, if present.
-func (u AnalyticsEventUnionParam) GetPreviousStateDurationMs() *float64 {
-	if vt := u.OfPlaybackStateChanged; vt != nil {
-		return &vt.PreviousStateDurationMs
 	}
 	return nil
 }
@@ -1746,6 +1739,30 @@ func (u AnalyticsEventUnionParam) GetViewerID() *string {
 }
 
 // Returns a pointer to the underlying variant's property, if present.
+func (u AnalyticsEventUnionParam) GetDeliveryFormat() *string {
+	if vt := u.OfViewStarted; vt != nil && vt.DeliveryFormat.Valid() {
+		return (*string)(&vt.DeliveryFormat.Value)
+	} else if vt := u.OfViewSnapshot; vt != nil && vt.DeliveryFormat.Valid() {
+		return (*string)(&vt.DeliveryFormat.Value)
+	} else if vt := u.OfPlaybackError; vt != nil && vt.DeliveryFormat.Valid() {
+		return (*string)(&vt.DeliveryFormat.Value)
+	} else if vt := u.OfViewEnded; vt != nil && vt.DeliveryFormat.Valid() {
+		return (*string)(&vt.DeliveryFormat.Value)
+	} else if vt := u.OfPlaybackStateChanged; vt != nil && vt.DeliveryFormat.Valid() {
+		return (*string)(&vt.DeliveryFormat.Value)
+	} else if vt := u.OfRenditionChanged; vt != nil && vt.DeliveryFormat.Valid() {
+		return (*string)(&vt.DeliveryFormat.Value)
+	} else if vt := u.OfSeekCompleted; vt != nil && vt.DeliveryFormat.Valid() {
+		return (*string)(&vt.DeliveryFormat.Value)
+	} else if vt := u.OfSubtitleChanged; vt != nil && vt.DeliveryFormat.Valid() {
+		return (*string)(&vt.DeliveryFormat.Value)
+	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.DeliveryFormat.Valid() {
+		return (*string)(&vt.DeliveryFormat.Value)
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
 func (u AnalyticsEventUnionParam) GetPlaybackRate() *float64 {
 	if vt := u.OfViewStarted; vt != nil && vt.PlaybackRate.Valid() {
 		return &vt.PlaybackRate.Value
@@ -1867,6 +1884,16 @@ func (u AnalyticsEventUnionParam) GetVisibilityState() *string {
 		return (*string)(&vt.VisibilityState.Value)
 	} else if vt := u.OfPlaybackRateChanged; vt != nil && vt.VisibilityState.Valid() {
 		return (*string)(&vt.VisibilityState.Value)
+	}
+	return nil
+}
+
+// Returns a pointer to the underlying variant's property, if present.
+func (u AnalyticsEventUnionParam) GetPreviousStateDurationMs() *float64 {
+	if vt := u.OfPlaybackStateChanged; vt != nil {
+		return (*float64)(&vt.PreviousStateDurationMs)
+	} else if vt := u.OfSeekCompleted; vt != nil && vt.PreviousStateDurationMs.Valid() {
+		return &vt.PreviousStateDurationMs.Value
 	}
 	return nil
 }
@@ -2157,6 +2184,13 @@ type PlaybackError struct {
 	// for unavailable measurements. Other integrations may omit any field except
 	// schema_version. Extra properties are preserved.
 	BrowserContext shared.BrowserContext `json:"browser_context" api:"nullable"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat PlaybackErrorDeliveryFormat `json:"delivery_format" api:"nullable"`
 	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
 	// to 16. Optional.
 	PlaybackRate float64 `json:"playback_rate" api:"nullable"`
@@ -2238,6 +2272,7 @@ type PlaybackError struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		DeliveryFormat              respjson.Field
 		PlaybackRate                respjson.Field
 		PlaybackRatePlayingTime     respjson.Field
 		PlayedRanges                respjson.Field
@@ -2330,6 +2365,17 @@ const (
 	PlaybackErrorStartupOutcomeEndedBeforeStart  PlaybackErrorStartupOutcome = "ended_before_start"
 )
 
+// How the player receives the media: hls for an HLS stream, file for a single
+// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+// omit it. Reports read it from each view's first start. Unlike connector_name, it
+// does not depend on the playback engine: Safari's native HLS reports html-media.
+type PlaybackErrorDeliveryFormat string
+
+const (
+	PlaybackErrorDeliveryFormatHls  PlaybackErrorDeliveryFormat = "hls"
+	PlaybackErrorDeliveryFormatFile PlaybackErrorDeliveryFormat = "file"
+)
+
 // Tab visibility when the event was recorded. Hidden does not imply paused
 // playback or identify the cause of a pause. Missing on older events; null when
 // unavailable.
@@ -2406,6 +2452,13 @@ type PlaybackErrorParam struct {
 	Sequence       int64   `json:"sequence" api:"required"`
 	VideoID        string  `json:"video_id" api:"required"`
 	ViewID         string  `json:"view_id" api:"required" format:"uuid"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat param.Opt[PlaybackErrorDeliveryFormat] `json:"delivery_format,omitzero"`
 	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
 	// to 16. Optional.
 	PlaybackRate param.Opt[float64] `json:"playback_rate,omitzero"`
@@ -2525,33 +2578,40 @@ type PlaybackRateChanged struct {
 	// Browser and device information. The Chunkify player sends every field, with null
 	// for unavailable measurements. Other integrations may omit any field except
 	// schema_version. Extra properties are preserved.
-	BrowserContext              shared.BrowserContext         `json:"browser_context" api:"nullable"`
-	DeliveryRequestCount        float64                       `json:"delivery_request_count" api:"nullable"`
-	DeliveryThroughputBps       float64                       `json:"delivery_throughput_bps" api:"nullable"`
-	DeliveryTransferredBytes    float64                       `json:"delivery_transferred_bytes" api:"nullable"`
-	DroppedVideoFrames          float64                       `json:"dropped_video_frames" api:"nullable"`
-	FirstVideoFrameTimeMs       float64                       `json:"first_video_frame_time_ms" api:"nullable"`
-	FurthestProgressRatio       float64                       `json:"furthest_progress_ratio" api:"nullable"`
-	MaximumPlayheadSeconds      float64                       `json:"maximum_playhead_seconds"`
-	MediaDurationSeconds        float64                       `json:"media_duration_seconds" api:"nullable"`
-	MediaHeightPx               float64                       `json:"media_height_px" api:"nullable"`
-	MediaWidthPx                float64                       `json:"media_width_px" api:"nullable"`
-	PlayerHeightPx              float64                       `json:"player_height_px" api:"nullable"`
-	PlayerWidthPx               float64                       `json:"player_width_px" api:"nullable"`
-	PlayingTimeMs               float64                       `json:"playing_time_ms"`
-	RebufferCount               float64                       `json:"rebuffer_count"`
-	RebufferDurationMs          float64                       `json:"rebuffer_duration_ms"`
-	RebufferRatio               float64                       `json:"rebuffer_ratio" api:"nullable"`
-	RenditionPlayingTime        []shared.RenditionPlayingTime `json:"rendition_playing_time" api:"nullable"`
-	RenditionSwitchCount        float64                       `json:"rendition_switch_count" api:"nullable"`
-	SeekCount                   float64                       `json:"seek_count"`
-	SeekDurationMs              float64                       `json:"seek_duration_ms"`
-	SelectedRenditionBitrateBps float64                       `json:"selected_rendition_bitrate_bps" api:"nullable"`
-	SelectedRenditionCodec      string                        `json:"selected_rendition_codec" api:"nullable"`
-	SelectedRenditionHeight     float64                       `json:"selected_rendition_height" api:"nullable"`
-	SelectedRenditionWidth      float64                       `json:"selected_rendition_width" api:"nullable"`
-	StartupTimeMs               float64                       `json:"startup_time_ms" api:"nullable"`
-	TotalVideoFrames            float64                       `json:"total_video_frames" api:"nullable"`
+	BrowserContext shared.BrowserContext `json:"browser_context" api:"nullable"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat              PlaybackRateChangedDeliveryFormat `json:"delivery_format" api:"nullable"`
+	DeliveryRequestCount        float64                           `json:"delivery_request_count" api:"nullable"`
+	DeliveryThroughputBps       float64                           `json:"delivery_throughput_bps" api:"nullable"`
+	DeliveryTransferredBytes    float64                           `json:"delivery_transferred_bytes" api:"nullable"`
+	DroppedVideoFrames          float64                           `json:"dropped_video_frames" api:"nullable"`
+	FirstVideoFrameTimeMs       float64                           `json:"first_video_frame_time_ms" api:"nullable"`
+	FurthestProgressRatio       float64                           `json:"furthest_progress_ratio" api:"nullable"`
+	MaximumPlayheadSeconds      float64                           `json:"maximum_playhead_seconds"`
+	MediaDurationSeconds        float64                           `json:"media_duration_seconds" api:"nullable"`
+	MediaHeightPx               float64                           `json:"media_height_px" api:"nullable"`
+	MediaWidthPx                float64                           `json:"media_width_px" api:"nullable"`
+	PlayerHeightPx              float64                           `json:"player_height_px" api:"nullable"`
+	PlayerWidthPx               float64                           `json:"player_width_px" api:"nullable"`
+	PlayingTimeMs               float64                           `json:"playing_time_ms"`
+	RebufferCount               float64                           `json:"rebuffer_count"`
+	RebufferDurationMs          float64                           `json:"rebuffer_duration_ms"`
+	RebufferRatio               float64                           `json:"rebuffer_ratio" api:"nullable"`
+	RenditionPlayingTime        []shared.RenditionPlayingTime     `json:"rendition_playing_time" api:"nullable"`
+	RenditionSwitchCount        float64                           `json:"rendition_switch_count" api:"nullable"`
+	SeekCount                   float64                           `json:"seek_count"`
+	SeekDurationMs              float64                           `json:"seek_duration_ms"`
+	SelectedRenditionBitrateBps float64                           `json:"selected_rendition_bitrate_bps" api:"nullable"`
+	SelectedRenditionCodec      string                            `json:"selected_rendition_codec" api:"nullable"`
+	SelectedRenditionHeight     float64                           `json:"selected_rendition_height" api:"nullable"`
+	SelectedRenditionWidth      float64                           `json:"selected_rendition_width" api:"nullable"`
+	StartupTimeMs               float64                           `json:"startup_time_ms" api:"nullable"`
+	TotalVideoFrames            float64                           `json:"total_video_frames" api:"nullable"`
 	// Optional integrator-supplied user ID, used to link views to the integrator's own
 	// users.
 	UserID string `json:"user_id" api:"nullable"`
@@ -2591,6 +2651,7 @@ type PlaybackRateChanged struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		DeliveryFormat              respjson.Field
 		DeliveryRequestCount        respjson.Field
 		DeliveryThroughputBps       respjson.Field
 		DeliveryTransferredBytes    respjson.Field
@@ -2703,6 +2764,17 @@ const (
 	PlaybackRateChangedStartupOutcomeEndedBeforeStart  PlaybackRateChangedStartupOutcome = "ended_before_start"
 )
 
+// How the player receives the media: hls for an HLS stream, file for a single
+// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+// omit it. Reports read it from each view's first start. Unlike connector_name, it
+// does not depend on the playback engine: Safari's native HLS reports html-media.
+type PlaybackRateChangedDeliveryFormat string
+
+const (
+	PlaybackRateChangedDeliveryFormatHls  PlaybackRateChangedDeliveryFormat = "hls"
+	PlaybackRateChangedDeliveryFormatFile PlaybackRateChangedDeliveryFormat = "file"
+)
+
 // Tab visibility when the event was recorded. Hidden does not imply paused
 // playback or identify the cause of a pause. Missing on older events; null when
 // unavailable.
@@ -2746,30 +2818,37 @@ type PlaybackRateChangedParam struct {
 	OccurredAt    time.Time                              `json:"occurred_at" api:"required" format:"date-time"`
 	// Name of the SDK or integration that produced the event. Informational metadata,
 	// preserved as received. Must contain at least one non-whitespace character.
-	SDKName                     string             `json:"sdk_name" api:"required"`
-	SDKVersion                  string             `json:"sdk_version" api:"required"`
-	Sequence                    int64              `json:"sequence" api:"required"`
-	VideoID                     string             `json:"video_id" api:"required"`
-	ViewID                      string             `json:"view_id" api:"required" format:"uuid"`
-	DeliveryRequestCount        param.Opt[float64] `json:"delivery_request_count,omitzero"`
-	DeliveryThroughputBps       param.Opt[float64] `json:"delivery_throughput_bps,omitzero"`
-	DeliveryTransferredBytes    param.Opt[float64] `json:"delivery_transferred_bytes,omitzero"`
-	DroppedVideoFrames          param.Opt[float64] `json:"dropped_video_frames,omitzero"`
-	FirstVideoFrameTimeMs       param.Opt[float64] `json:"first_video_frame_time_ms,omitzero"`
-	FurthestProgressRatio       param.Opt[float64] `json:"furthest_progress_ratio,omitzero"`
-	MediaDurationSeconds        param.Opt[float64] `json:"media_duration_seconds,omitzero"`
-	MediaHeightPx               param.Opt[float64] `json:"media_height_px,omitzero"`
-	MediaWidthPx                param.Opt[float64] `json:"media_width_px,omitzero"`
-	PlayerHeightPx              param.Opt[float64] `json:"player_height_px,omitzero"`
-	PlayerWidthPx               param.Opt[float64] `json:"player_width_px,omitzero"`
-	RebufferRatio               param.Opt[float64] `json:"rebuffer_ratio,omitzero"`
-	RenditionSwitchCount        param.Opt[float64] `json:"rendition_switch_count,omitzero"`
-	SelectedRenditionBitrateBps param.Opt[float64] `json:"selected_rendition_bitrate_bps,omitzero"`
-	SelectedRenditionCodec      param.Opt[string]  `json:"selected_rendition_codec,omitzero"`
-	SelectedRenditionHeight     param.Opt[float64] `json:"selected_rendition_height,omitzero"`
-	SelectedRenditionWidth      param.Opt[float64] `json:"selected_rendition_width,omitzero"`
-	StartupTimeMs               param.Opt[float64] `json:"startup_time_ms,omitzero"`
-	TotalVideoFrames            param.Opt[float64] `json:"total_video_frames,omitzero"`
+	SDKName    string `json:"sdk_name" api:"required"`
+	SDKVersion string `json:"sdk_version" api:"required"`
+	Sequence   int64  `json:"sequence" api:"required"`
+	VideoID    string `json:"video_id" api:"required"`
+	ViewID     string `json:"view_id" api:"required" format:"uuid"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat              param.Opt[PlaybackRateChangedDeliveryFormat] `json:"delivery_format,omitzero"`
+	DeliveryRequestCount        param.Opt[float64]                           `json:"delivery_request_count,omitzero"`
+	DeliveryThroughputBps       param.Opt[float64]                           `json:"delivery_throughput_bps,omitzero"`
+	DeliveryTransferredBytes    param.Opt[float64]                           `json:"delivery_transferred_bytes,omitzero"`
+	DroppedVideoFrames          param.Opt[float64]                           `json:"dropped_video_frames,omitzero"`
+	FirstVideoFrameTimeMs       param.Opt[float64]                           `json:"first_video_frame_time_ms,omitzero"`
+	FurthestProgressRatio       param.Opt[float64]                           `json:"furthest_progress_ratio,omitzero"`
+	MediaDurationSeconds        param.Opt[float64]                           `json:"media_duration_seconds,omitzero"`
+	MediaHeightPx               param.Opt[float64]                           `json:"media_height_px,omitzero"`
+	MediaWidthPx                param.Opt[float64]                           `json:"media_width_px,omitzero"`
+	PlayerHeightPx              param.Opt[float64]                           `json:"player_height_px,omitzero"`
+	PlayerWidthPx               param.Opt[float64]                           `json:"player_width_px,omitzero"`
+	RebufferRatio               param.Opt[float64]                           `json:"rebuffer_ratio,omitzero"`
+	RenditionSwitchCount        param.Opt[float64]                           `json:"rendition_switch_count,omitzero"`
+	SelectedRenditionBitrateBps param.Opt[float64]                           `json:"selected_rendition_bitrate_bps,omitzero"`
+	SelectedRenditionCodec      param.Opt[string]                            `json:"selected_rendition_codec,omitzero"`
+	SelectedRenditionHeight     param.Opt[float64]                           `json:"selected_rendition_height,omitzero"`
+	SelectedRenditionWidth      param.Opt[float64]                           `json:"selected_rendition_width,omitzero"`
+	StartupTimeMs               param.Opt[float64]                           `json:"startup_time_ms,omitzero"`
+	TotalVideoFrames            param.Opt[float64]                           `json:"total_video_frames,omitzero"`
 	// Optional integrator-supplied user ID, used to link views to the integrator's own
 	// users.
 	UserID param.Opt[string] `json:"user_id,omitzero"`
@@ -2880,33 +2959,40 @@ type PlaybackStateChanged struct {
 	// Browser and device information. The Chunkify player sends every field, with null
 	// for unavailable measurements. Other integrations may omit any field except
 	// schema_version. Extra properties are preserved.
-	BrowserContext              shared.BrowserContext         `json:"browser_context" api:"nullable"`
-	DeliveryRequestCount        float64                       `json:"delivery_request_count" api:"nullable"`
-	DeliveryThroughputBps       float64                       `json:"delivery_throughput_bps" api:"nullable"`
-	DeliveryTransferredBytes    float64                       `json:"delivery_transferred_bytes" api:"nullable"`
-	DroppedVideoFrames          float64                       `json:"dropped_video_frames" api:"nullable"`
-	FirstVideoFrameTimeMs       float64                       `json:"first_video_frame_time_ms" api:"nullable"`
-	FurthestProgressRatio       float64                       `json:"furthest_progress_ratio" api:"nullable"`
-	MaximumPlayheadSeconds      float64                       `json:"maximum_playhead_seconds"`
-	MediaDurationSeconds        float64                       `json:"media_duration_seconds" api:"nullable"`
-	MediaHeightPx               float64                       `json:"media_height_px" api:"nullable"`
-	MediaWidthPx                float64                       `json:"media_width_px" api:"nullable"`
-	PlayerHeightPx              float64                       `json:"player_height_px" api:"nullable"`
-	PlayerWidthPx               float64                       `json:"player_width_px" api:"nullable"`
-	PlayingTimeMs               float64                       `json:"playing_time_ms"`
-	RebufferCount               float64                       `json:"rebuffer_count"`
-	RebufferDurationMs          float64                       `json:"rebuffer_duration_ms"`
-	RebufferRatio               float64                       `json:"rebuffer_ratio" api:"nullable"`
-	RenditionPlayingTime        []shared.RenditionPlayingTime `json:"rendition_playing_time" api:"nullable"`
-	RenditionSwitchCount        float64                       `json:"rendition_switch_count" api:"nullable"`
-	SeekCount                   float64                       `json:"seek_count"`
-	SeekDurationMs              float64                       `json:"seek_duration_ms"`
-	SelectedRenditionBitrateBps float64                       `json:"selected_rendition_bitrate_bps" api:"nullable"`
-	SelectedRenditionCodec      string                        `json:"selected_rendition_codec" api:"nullable"`
-	SelectedRenditionHeight     float64                       `json:"selected_rendition_height" api:"nullable"`
-	SelectedRenditionWidth      float64                       `json:"selected_rendition_width" api:"nullable"`
-	StartupTimeMs               float64                       `json:"startup_time_ms" api:"nullable"`
-	TotalVideoFrames            float64                       `json:"total_video_frames" api:"nullable"`
+	BrowserContext shared.BrowserContext `json:"browser_context" api:"nullable"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat              PlaybackStateChangedDeliveryFormat `json:"delivery_format" api:"nullable"`
+	DeliveryRequestCount        float64                            `json:"delivery_request_count" api:"nullable"`
+	DeliveryThroughputBps       float64                            `json:"delivery_throughput_bps" api:"nullable"`
+	DeliveryTransferredBytes    float64                            `json:"delivery_transferred_bytes" api:"nullable"`
+	DroppedVideoFrames          float64                            `json:"dropped_video_frames" api:"nullable"`
+	FirstVideoFrameTimeMs       float64                            `json:"first_video_frame_time_ms" api:"nullable"`
+	FurthestProgressRatio       float64                            `json:"furthest_progress_ratio" api:"nullable"`
+	MaximumPlayheadSeconds      float64                            `json:"maximum_playhead_seconds"`
+	MediaDurationSeconds        float64                            `json:"media_duration_seconds" api:"nullable"`
+	MediaHeightPx               float64                            `json:"media_height_px" api:"nullable"`
+	MediaWidthPx                float64                            `json:"media_width_px" api:"nullable"`
+	PlayerHeightPx              float64                            `json:"player_height_px" api:"nullable"`
+	PlayerWidthPx               float64                            `json:"player_width_px" api:"nullable"`
+	PlayingTimeMs               float64                            `json:"playing_time_ms"`
+	RebufferCount               float64                            `json:"rebuffer_count"`
+	RebufferDurationMs          float64                            `json:"rebuffer_duration_ms"`
+	RebufferRatio               float64                            `json:"rebuffer_ratio" api:"nullable"`
+	RenditionPlayingTime        []shared.RenditionPlayingTime      `json:"rendition_playing_time" api:"nullable"`
+	RenditionSwitchCount        float64                            `json:"rendition_switch_count" api:"nullable"`
+	SeekCount                   float64                            `json:"seek_count"`
+	SeekDurationMs              float64                            `json:"seek_duration_ms"`
+	SelectedRenditionBitrateBps float64                            `json:"selected_rendition_bitrate_bps" api:"nullable"`
+	SelectedRenditionCodec      string                             `json:"selected_rendition_codec" api:"nullable"`
+	SelectedRenditionHeight     float64                            `json:"selected_rendition_height" api:"nullable"`
+	SelectedRenditionWidth      float64                            `json:"selected_rendition_width" api:"nullable"`
+	StartupTimeMs               float64                            `json:"startup_time_ms" api:"nullable"`
+	TotalVideoFrames            float64                            `json:"total_video_frames" api:"nullable"`
 	// Optional integrator-supplied user ID, used to link views to the integrator's own
 	// users.
 	UserID string `json:"user_id" api:"nullable"`
@@ -2947,6 +3033,7 @@ type PlaybackStateChanged struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		DeliveryFormat              respjson.Field
 		DeliveryRequestCount        respjson.Field
 		DeliveryThroughputBps       respjson.Field
 		DeliveryTransferredBytes    respjson.Field
@@ -3087,6 +3174,17 @@ const (
 	PlaybackStateChangedToStateStopped   PlaybackStateChangedToState = "stopped"
 )
 
+// How the player receives the media: hls for an HLS stream, file for a single
+// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+// omit it. Reports read it from each view's first start. Unlike connector_name, it
+// does not depend on the playback engine: Safari's native HLS reports html-media.
+type PlaybackStateChangedDeliveryFormat string
+
+const (
+	PlaybackStateChangedDeliveryFormatHls  PlaybackStateChangedDeliveryFormat = "hls"
+	PlaybackStateChangedDeliveryFormatFile PlaybackStateChangedDeliveryFormat = "file"
+)
+
 // Tab visibility when the event was recorded. Hidden does not imply paused
 // playback or identify the cause of a pause. Missing on older events; null when
 // unavailable.
@@ -3135,28 +3233,35 @@ type PlaybackStateChangedParam struct {
 	Sequence   int64  `json:"sequence" api:"required"`
 	// Any of "startup", "resuming", "playing", "paused", "buffering", "seeking",
 	// "error", "ended", "stopped".
-	ToState                     PlaybackStateChangedToState `json:"to_state,omitzero" api:"required"`
-	VideoID                     string                      `json:"video_id" api:"required"`
-	ViewID                      string                      `json:"view_id" api:"required" format:"uuid"`
-	DeliveryRequestCount        param.Opt[float64]          `json:"delivery_request_count,omitzero"`
-	DeliveryThroughputBps       param.Opt[float64]          `json:"delivery_throughput_bps,omitzero"`
-	DeliveryTransferredBytes    param.Opt[float64]          `json:"delivery_transferred_bytes,omitzero"`
-	DroppedVideoFrames          param.Opt[float64]          `json:"dropped_video_frames,omitzero"`
-	FirstVideoFrameTimeMs       param.Opt[float64]          `json:"first_video_frame_time_ms,omitzero"`
-	FurthestProgressRatio       param.Opt[float64]          `json:"furthest_progress_ratio,omitzero"`
-	MediaDurationSeconds        param.Opt[float64]          `json:"media_duration_seconds,omitzero"`
-	MediaHeightPx               param.Opt[float64]          `json:"media_height_px,omitzero"`
-	MediaWidthPx                param.Opt[float64]          `json:"media_width_px,omitzero"`
-	PlayerHeightPx              param.Opt[float64]          `json:"player_height_px,omitzero"`
-	PlayerWidthPx               param.Opt[float64]          `json:"player_width_px,omitzero"`
-	RebufferRatio               param.Opt[float64]          `json:"rebuffer_ratio,omitzero"`
-	RenditionSwitchCount        param.Opt[float64]          `json:"rendition_switch_count,omitzero"`
-	SelectedRenditionBitrateBps param.Opt[float64]          `json:"selected_rendition_bitrate_bps,omitzero"`
-	SelectedRenditionCodec      param.Opt[string]           `json:"selected_rendition_codec,omitzero"`
-	SelectedRenditionHeight     param.Opt[float64]          `json:"selected_rendition_height,omitzero"`
-	SelectedRenditionWidth      param.Opt[float64]          `json:"selected_rendition_width,omitzero"`
-	StartupTimeMs               param.Opt[float64]          `json:"startup_time_ms,omitzero"`
-	TotalVideoFrames            param.Opt[float64]          `json:"total_video_frames,omitzero"`
+	ToState PlaybackStateChangedToState `json:"to_state,omitzero" api:"required"`
+	VideoID string                      `json:"video_id" api:"required"`
+	ViewID  string                      `json:"view_id" api:"required" format:"uuid"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat              param.Opt[PlaybackStateChangedDeliveryFormat] `json:"delivery_format,omitzero"`
+	DeliveryRequestCount        param.Opt[float64]                            `json:"delivery_request_count,omitzero"`
+	DeliveryThroughputBps       param.Opt[float64]                            `json:"delivery_throughput_bps,omitzero"`
+	DeliveryTransferredBytes    param.Opt[float64]                            `json:"delivery_transferred_bytes,omitzero"`
+	DroppedVideoFrames          param.Opt[float64]                            `json:"dropped_video_frames,omitzero"`
+	FirstVideoFrameTimeMs       param.Opt[float64]                            `json:"first_video_frame_time_ms,omitzero"`
+	FurthestProgressRatio       param.Opt[float64]                            `json:"furthest_progress_ratio,omitzero"`
+	MediaDurationSeconds        param.Opt[float64]                            `json:"media_duration_seconds,omitzero"`
+	MediaHeightPx               param.Opt[float64]                            `json:"media_height_px,omitzero"`
+	MediaWidthPx                param.Opt[float64]                            `json:"media_width_px,omitzero"`
+	PlayerHeightPx              param.Opt[float64]                            `json:"player_height_px,omitzero"`
+	PlayerWidthPx               param.Opt[float64]                            `json:"player_width_px,omitzero"`
+	RebufferRatio               param.Opt[float64]                            `json:"rebuffer_ratio,omitzero"`
+	RenditionSwitchCount        param.Opt[float64]                            `json:"rendition_switch_count,omitzero"`
+	SelectedRenditionBitrateBps param.Opt[float64]                            `json:"selected_rendition_bitrate_bps,omitzero"`
+	SelectedRenditionCodec      param.Opt[string]                             `json:"selected_rendition_codec,omitzero"`
+	SelectedRenditionHeight     param.Opt[float64]                            `json:"selected_rendition_height,omitzero"`
+	SelectedRenditionWidth      param.Opt[float64]                            `json:"selected_rendition_width,omitzero"`
+	StartupTimeMs               param.Opt[float64]                            `json:"startup_time_ms,omitzero"`
+	TotalVideoFrames            param.Opt[float64]                            `json:"total_video_frames,omitzero"`
 	// Optional integrator-supplied user ID, used to link views to the integrator's own
 	// users.
 	UserID param.Opt[string] `json:"user_id,omitzero"`
@@ -3272,27 +3377,34 @@ type RenditionChanged struct {
 	// Browser and device information. The Chunkify player sends every field, with null
 	// for unavailable measurements. Other integrations may omit any field except
 	// schema_version. Extra properties are preserved.
-	BrowserContext           shared.BrowserContext         `json:"browser_context" api:"nullable"`
-	DeliveryRequestCount     float64                       `json:"delivery_request_count" api:"nullable"`
-	DeliveryThroughputBps    float64                       `json:"delivery_throughput_bps" api:"nullable"`
-	DeliveryTransferredBytes float64                       `json:"delivery_transferred_bytes" api:"nullable"`
-	DroppedVideoFrames       float64                       `json:"dropped_video_frames" api:"nullable"`
-	FirstVideoFrameTimeMs    float64                       `json:"first_video_frame_time_ms" api:"nullable"`
-	FurthestProgressRatio    float64                       `json:"furthest_progress_ratio" api:"nullable"`
-	MaximumPlayheadSeconds   float64                       `json:"maximum_playhead_seconds"`
-	MediaDurationSeconds     float64                       `json:"media_duration_seconds" api:"nullable"`
-	MediaHeightPx            float64                       `json:"media_height_px" api:"nullable"`
-	MediaWidthPx             float64                       `json:"media_width_px" api:"nullable"`
-	PlayingTimeMs            float64                       `json:"playing_time_ms"`
-	RebufferCount            float64                       `json:"rebuffer_count"`
-	RebufferDurationMs       float64                       `json:"rebuffer_duration_ms"`
-	RebufferRatio            float64                       `json:"rebuffer_ratio" api:"nullable"`
-	RenditionPlayingTime     []shared.RenditionPlayingTime `json:"rendition_playing_time" api:"nullable"`
-	RenditionSwitchCount     float64                       `json:"rendition_switch_count" api:"nullable"`
-	SeekCount                float64                       `json:"seek_count"`
-	SeekDurationMs           float64                       `json:"seek_duration_ms"`
-	StartupTimeMs            float64                       `json:"startup_time_ms" api:"nullable"`
-	TotalVideoFrames         float64                       `json:"total_video_frames" api:"nullable"`
+	BrowserContext shared.BrowserContext `json:"browser_context" api:"nullable"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat           RenditionChangedDeliveryFormat `json:"delivery_format" api:"nullable"`
+	DeliveryRequestCount     float64                        `json:"delivery_request_count" api:"nullable"`
+	DeliveryThroughputBps    float64                        `json:"delivery_throughput_bps" api:"nullable"`
+	DeliveryTransferredBytes float64                        `json:"delivery_transferred_bytes" api:"nullable"`
+	DroppedVideoFrames       float64                        `json:"dropped_video_frames" api:"nullable"`
+	FirstVideoFrameTimeMs    float64                        `json:"first_video_frame_time_ms" api:"nullable"`
+	FurthestProgressRatio    float64                        `json:"furthest_progress_ratio" api:"nullable"`
+	MaximumPlayheadSeconds   float64                        `json:"maximum_playhead_seconds"`
+	MediaDurationSeconds     float64                        `json:"media_duration_seconds" api:"nullable"`
+	MediaHeightPx            float64                        `json:"media_height_px" api:"nullable"`
+	MediaWidthPx             float64                        `json:"media_width_px" api:"nullable"`
+	PlayingTimeMs            float64                        `json:"playing_time_ms"`
+	RebufferCount            float64                        `json:"rebuffer_count"`
+	RebufferDurationMs       float64                        `json:"rebuffer_duration_ms"`
+	RebufferRatio            float64                        `json:"rebuffer_ratio" api:"nullable"`
+	RenditionPlayingTime     []shared.RenditionPlayingTime  `json:"rendition_playing_time" api:"nullable"`
+	RenditionSwitchCount     float64                        `json:"rendition_switch_count" api:"nullable"`
+	SeekCount                float64                        `json:"seek_count"`
+	SeekDurationMs           float64                        `json:"seek_duration_ms"`
+	StartupTimeMs            float64                        `json:"startup_time_ms" api:"nullable"`
+	TotalVideoFrames         float64                        `json:"total_video_frames" api:"nullable"`
 	// Optional integrator-supplied user ID, used to link views to the integrator's own
 	// users.
 	UserID string `json:"user_id" api:"nullable"`
@@ -3342,6 +3454,7 @@ type RenditionChanged struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		DeliveryFormat              respjson.Field
 		DeliveryRequestCount        respjson.Field
 		DeliveryThroughputBps       respjson.Field
 		DeliveryTransferredBytes    respjson.Field
@@ -3448,6 +3561,17 @@ const (
 	RenditionChangedStartupOutcomeEndedBeforeStart  RenditionChangedStartupOutcome = "ended_before_start"
 )
 
+// How the player receives the media: hls for an HLS stream, file for a single
+// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+// omit it. Reports read it from each view's first start. Unlike connector_name, it
+// does not depend on the playback engine: Safari's native HLS reports html-media.
+type RenditionChangedDeliveryFormat string
+
+const (
+	RenditionChangedDeliveryFormatHls  RenditionChangedDeliveryFormat = "hls"
+	RenditionChangedDeliveryFormatFile RenditionChangedDeliveryFormat = "file"
+)
+
 // Tab visibility when the event was recorded. Hidden does not imply paused
 // playback or identify the cause of a pause. Missing on older events; null when
 // unavailable.
@@ -3503,24 +3627,31 @@ type RenditionChangedParam struct {
 	OccurredAt    time.Time                           `json:"occurred_at" api:"required" format:"date-time"`
 	// Name of the SDK or integration that produced the event. Informational metadata,
 	// preserved as received. Must contain at least one non-whitespace character.
-	SDKName                  string             `json:"sdk_name" api:"required"`
-	SDKVersion               string             `json:"sdk_version" api:"required"`
-	Sequence                 int64              `json:"sequence" api:"required"`
-	VideoID                  string             `json:"video_id" api:"required"`
-	ViewID                   string             `json:"view_id" api:"required" format:"uuid"`
-	DeliveryRequestCount     param.Opt[float64] `json:"delivery_request_count,omitzero"`
-	DeliveryThroughputBps    param.Opt[float64] `json:"delivery_throughput_bps,omitzero"`
-	DeliveryTransferredBytes param.Opt[float64] `json:"delivery_transferred_bytes,omitzero"`
-	DroppedVideoFrames       param.Opt[float64] `json:"dropped_video_frames,omitzero"`
-	FirstVideoFrameTimeMs    param.Opt[float64] `json:"first_video_frame_time_ms,omitzero"`
-	FurthestProgressRatio    param.Opt[float64] `json:"furthest_progress_ratio,omitzero"`
-	MediaDurationSeconds     param.Opt[float64] `json:"media_duration_seconds,omitzero"`
-	MediaHeightPx            param.Opt[float64] `json:"media_height_px,omitzero"`
-	MediaWidthPx             param.Opt[float64] `json:"media_width_px,omitzero"`
-	RebufferRatio            param.Opt[float64] `json:"rebuffer_ratio,omitzero"`
-	RenditionSwitchCount     param.Opt[float64] `json:"rendition_switch_count,omitzero"`
-	StartupTimeMs            param.Opt[float64] `json:"startup_time_ms,omitzero"`
-	TotalVideoFrames         param.Opt[float64] `json:"total_video_frames,omitzero"`
+	SDKName    string `json:"sdk_name" api:"required"`
+	SDKVersion string `json:"sdk_version" api:"required"`
+	Sequence   int64  `json:"sequence" api:"required"`
+	VideoID    string `json:"video_id" api:"required"`
+	ViewID     string `json:"view_id" api:"required" format:"uuid"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat           param.Opt[RenditionChangedDeliveryFormat] `json:"delivery_format,omitzero"`
+	DeliveryRequestCount     param.Opt[float64]                        `json:"delivery_request_count,omitzero"`
+	DeliveryThroughputBps    param.Opt[float64]                        `json:"delivery_throughput_bps,omitzero"`
+	DeliveryTransferredBytes param.Opt[float64]                        `json:"delivery_transferred_bytes,omitzero"`
+	DroppedVideoFrames       param.Opt[float64]                        `json:"dropped_video_frames,omitzero"`
+	FirstVideoFrameTimeMs    param.Opt[float64]                        `json:"first_video_frame_time_ms,omitzero"`
+	FurthestProgressRatio    param.Opt[float64]                        `json:"furthest_progress_ratio,omitzero"`
+	MediaDurationSeconds     param.Opt[float64]                        `json:"media_duration_seconds,omitzero"`
+	MediaHeightPx            param.Opt[float64]                        `json:"media_height_px,omitzero"`
+	MediaWidthPx             param.Opt[float64]                        `json:"media_width_px,omitzero"`
+	RebufferRatio            param.Opt[float64]                        `json:"rebuffer_ratio,omitzero"`
+	RenditionSwitchCount     param.Opt[float64]                        `json:"rendition_switch_count,omitzero"`
+	StartupTimeMs            param.Opt[float64]                        `json:"startup_time_ms,omitzero"`
+	TotalVideoFrames         param.Opt[float64]                        `json:"total_video_frames,omitzero"`
 	// Optional integrator-supplied user ID, used to link views to the integrator's own
 	// users.
 	UserID param.Opt[string] `json:"user_id,omitzero"`
@@ -3638,20 +3769,31 @@ type SeekCompleted struct {
 	// Browser and device information. The Chunkify player sends every field, with null
 	// for unavailable measurements. Other integrations may omit any field except
 	// schema_version. Extra properties are preserved.
-	BrowserContext              shared.BrowserContext         `json:"browser_context" api:"nullable"`
-	DeliveryRequestCount        float64                       `json:"delivery_request_count" api:"nullable"`
-	DeliveryThroughputBps       float64                       `json:"delivery_throughput_bps" api:"nullable"`
-	DeliveryTransferredBytes    float64                       `json:"delivery_transferred_bytes" api:"nullable"`
-	DroppedVideoFrames          float64                       `json:"dropped_video_frames" api:"nullable"`
-	FirstVideoFrameTimeMs       float64                       `json:"first_video_frame_time_ms" api:"nullable"`
-	FurthestProgressRatio       float64                       `json:"furthest_progress_ratio" api:"nullable"`
-	MaximumPlayheadSeconds      float64                       `json:"maximum_playhead_seconds"`
-	MediaDurationSeconds        float64                       `json:"media_duration_seconds" api:"nullable"`
-	MediaHeightPx               float64                       `json:"media_height_px" api:"nullable"`
-	MediaWidthPx                float64                       `json:"media_width_px" api:"nullable"`
-	PlayerHeightPx              float64                       `json:"player_height_px" api:"nullable"`
-	PlayerWidthPx               float64                       `json:"player_width_px" api:"nullable"`
-	PlayingTimeMs               float64                       `json:"playing_time_ms"`
+	BrowserContext shared.BrowserContext `json:"browser_context" api:"nullable"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat           SeekCompletedDeliveryFormat `json:"delivery_format" api:"nullable"`
+	DeliveryRequestCount     float64                     `json:"delivery_request_count" api:"nullable"`
+	DeliveryThroughputBps    float64                     `json:"delivery_throughput_bps" api:"nullable"`
+	DeliveryTransferredBytes float64                     `json:"delivery_transferred_bytes" api:"nullable"`
+	DroppedVideoFrames       float64                     `json:"dropped_video_frames" api:"nullable"`
+	FirstVideoFrameTimeMs    float64                     `json:"first_video_frame_time_ms" api:"nullable"`
+	FurthestProgressRatio    float64                     `json:"furthest_progress_ratio" api:"nullable"`
+	MaximumPlayheadSeconds   float64                     `json:"maximum_playhead_seconds"`
+	MediaDurationSeconds     float64                     `json:"media_duration_seconds" api:"nullable"`
+	MediaHeightPx            float64                     `json:"media_height_px" api:"nullable"`
+	MediaWidthPx             float64                     `json:"media_width_px" api:"nullable"`
+	PlayerHeightPx           float64                     `json:"player_height_px" api:"nullable"`
+	PlayerWidthPx            float64                     `json:"player_width_px" api:"nullable"`
+	PlayingTimeMs            float64                     `json:"playing_time_ms"`
+	// Wall-clock time spent in state_before_seek until the seek started, excluding the
+	// seek. The state after the seek is timed from when the seek ends, so each stretch
+	// is reported once. Omitted by older SDKs.
+	PreviousStateDurationMs     float64                       `json:"previous_state_duration_ms"`
 	RebufferCount               float64                       `json:"rebuffer_count"`
 	RebufferDurationMs          float64                       `json:"rebuffer_duration_ms"`
 	RebufferRatio               float64                       `json:"rebuffer_ratio" api:"nullable"`
@@ -3711,6 +3853,7 @@ type SeekCompleted struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		DeliveryFormat              respjson.Field
 		DeliveryRequestCount        respjson.Field
 		DeliveryThroughputBps       respjson.Field
 		DeliveryTransferredBytes    respjson.Field
@@ -3724,6 +3867,7 @@ type SeekCompleted struct {
 		PlayerHeightPx              respjson.Field
 		PlayerWidthPx               respjson.Field
 		PlayingTimeMs               respjson.Field
+		PreviousStateDurationMs     respjson.Field
 		RebufferCount               respjson.Field
 		RebufferDurationMs          respjson.Field
 		RebufferRatio               respjson.Field
@@ -3859,6 +4003,17 @@ const (
 	SeekCompletedStateBeforeSeekStopped   SeekCompletedStateBeforeSeek = "stopped"
 )
 
+// How the player receives the media: hls for an HLS stream, file for a single
+// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+// omit it. Reports read it from each view's first start. Unlike connector_name, it
+// does not depend on the playback engine: Safari's native HLS reports html-media.
+type SeekCompletedDeliveryFormat string
+
+const (
+	SeekCompletedDeliveryFormatHls  SeekCompletedDeliveryFormat = "hls"
+	SeekCompletedDeliveryFormatFile SeekCompletedDeliveryFormat = "file"
+)
+
 // Tab visibility when the event was recorded. Hidden does not imply paused
 // playback or identify the cause of a pause. Missing on older events; null when
 // unavailable.
@@ -3916,28 +4071,35 @@ type SeekCompletedParam struct {
 	StateAfterSeek SeekCompletedStateAfterSeek `json:"state_after_seek,omitzero" api:"required"`
 	// Any of "startup", "resuming", "playing", "paused", "buffering", "seeking",
 	// "error", "ended", "stopped".
-	StateBeforeSeek             SeekCompletedStateBeforeSeek `json:"state_before_seek,omitzero" api:"required"`
-	VideoID                     string                       `json:"video_id" api:"required"`
-	ViewID                      string                       `json:"view_id" api:"required" format:"uuid"`
-	DeliveryRequestCount        param.Opt[float64]           `json:"delivery_request_count,omitzero"`
-	DeliveryThroughputBps       param.Opt[float64]           `json:"delivery_throughput_bps,omitzero"`
-	DeliveryTransferredBytes    param.Opt[float64]           `json:"delivery_transferred_bytes,omitzero"`
-	DroppedVideoFrames          param.Opt[float64]           `json:"dropped_video_frames,omitzero"`
-	FirstVideoFrameTimeMs       param.Opt[float64]           `json:"first_video_frame_time_ms,omitzero"`
-	FurthestProgressRatio       param.Opt[float64]           `json:"furthest_progress_ratio,omitzero"`
-	MediaDurationSeconds        param.Opt[float64]           `json:"media_duration_seconds,omitzero"`
-	MediaHeightPx               param.Opt[float64]           `json:"media_height_px,omitzero"`
-	MediaWidthPx                param.Opt[float64]           `json:"media_width_px,omitzero"`
-	PlayerHeightPx              param.Opt[float64]           `json:"player_height_px,omitzero"`
-	PlayerWidthPx               param.Opt[float64]           `json:"player_width_px,omitzero"`
-	RebufferRatio               param.Opt[float64]           `json:"rebuffer_ratio,omitzero"`
-	RenditionSwitchCount        param.Opt[float64]           `json:"rendition_switch_count,omitzero"`
-	SelectedRenditionBitrateBps param.Opt[float64]           `json:"selected_rendition_bitrate_bps,omitzero"`
-	SelectedRenditionCodec      param.Opt[string]            `json:"selected_rendition_codec,omitzero"`
-	SelectedRenditionHeight     param.Opt[float64]           `json:"selected_rendition_height,omitzero"`
-	SelectedRenditionWidth      param.Opt[float64]           `json:"selected_rendition_width,omitzero"`
-	StartupTimeMs               param.Opt[float64]           `json:"startup_time_ms,omitzero"`
-	TotalVideoFrames            param.Opt[float64]           `json:"total_video_frames,omitzero"`
+	StateBeforeSeek SeekCompletedStateBeforeSeek `json:"state_before_seek,omitzero" api:"required"`
+	VideoID         string                       `json:"video_id" api:"required"`
+	ViewID          string                       `json:"view_id" api:"required" format:"uuid"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat              param.Opt[SeekCompletedDeliveryFormat] `json:"delivery_format,omitzero"`
+	DeliveryRequestCount        param.Opt[float64]                     `json:"delivery_request_count,omitzero"`
+	DeliveryThroughputBps       param.Opt[float64]                     `json:"delivery_throughput_bps,omitzero"`
+	DeliveryTransferredBytes    param.Opt[float64]                     `json:"delivery_transferred_bytes,omitzero"`
+	DroppedVideoFrames          param.Opt[float64]                     `json:"dropped_video_frames,omitzero"`
+	FirstVideoFrameTimeMs       param.Opt[float64]                     `json:"first_video_frame_time_ms,omitzero"`
+	FurthestProgressRatio       param.Opt[float64]                     `json:"furthest_progress_ratio,omitzero"`
+	MediaDurationSeconds        param.Opt[float64]                     `json:"media_duration_seconds,omitzero"`
+	MediaHeightPx               param.Opt[float64]                     `json:"media_height_px,omitzero"`
+	MediaWidthPx                param.Opt[float64]                     `json:"media_width_px,omitzero"`
+	PlayerHeightPx              param.Opt[float64]                     `json:"player_height_px,omitzero"`
+	PlayerWidthPx               param.Opt[float64]                     `json:"player_width_px,omitzero"`
+	RebufferRatio               param.Opt[float64]                     `json:"rebuffer_ratio,omitzero"`
+	RenditionSwitchCount        param.Opt[float64]                     `json:"rendition_switch_count,omitzero"`
+	SelectedRenditionBitrateBps param.Opt[float64]                     `json:"selected_rendition_bitrate_bps,omitzero"`
+	SelectedRenditionCodec      param.Opt[string]                      `json:"selected_rendition_codec,omitzero"`
+	SelectedRenditionHeight     param.Opt[float64]                     `json:"selected_rendition_height,omitzero"`
+	SelectedRenditionWidth      param.Opt[float64]                     `json:"selected_rendition_width,omitzero"`
+	StartupTimeMs               param.Opt[float64]                     `json:"startup_time_ms,omitzero"`
+	TotalVideoFrames            param.Opt[float64]                     `json:"total_video_frames,omitzero"`
 	// Optional integrator-supplied user ID, used to link views to the integrator's own
 	// users.
 	UserID param.Opt[string] `json:"user_id,omitzero"`
@@ -3951,11 +4113,15 @@ type SeekCompletedParam struct {
 	VisibilityState        param.Opt[SeekCompletedVisibilityState] `json:"visibility_state,omitzero"`
 	MaximumPlayheadSeconds param.Opt[float64]                      `json:"maximum_playhead_seconds,omitzero"`
 	PlayingTimeMs          param.Opt[float64]                      `json:"playing_time_ms,omitzero"`
-	RebufferCount          param.Opt[float64]                      `json:"rebuffer_count,omitzero"`
-	RebufferDurationMs     param.Opt[float64]                      `json:"rebuffer_duration_ms,omitzero"`
-	SeekCount              param.Opt[float64]                      `json:"seek_count,omitzero"`
-	SeekDurationMs         param.Opt[float64]                      `json:"seek_duration_ms,omitzero"`
-	RenditionPlayingTime   []shared.RenditionPlayingTimeParam      `json:"rendition_playing_time,omitzero"`
+	// Wall-clock time spent in state_before_seek until the seek started, excluding the
+	// seek. The state after the seek is timed from when the seek ends, so each stretch
+	// is reported once. Omitted by older SDKs.
+	PreviousStateDurationMs param.Opt[float64]                 `json:"previous_state_duration_ms,omitzero"`
+	RebufferCount           param.Opt[float64]                 `json:"rebuffer_count,omitzero"`
+	RebufferDurationMs      param.Opt[float64]                 `json:"rebuffer_duration_ms,omitzero"`
+	SeekCount               param.Opt[float64]                 `json:"seek_count,omitzero"`
+	SeekDurationMs          param.Opt[float64]                 `json:"seek_duration_ms,omitzero"`
+	RenditionPlayingTime    []shared.RenditionPlayingTimeParam `json:"rendition_playing_time,omitzero"`
 	// Browser and device information. The Chunkify player sends every field, with null
 	// for unavailable measurements. Other integrations may omit any field except
 	// schema_version. Extra properties are preserved.
@@ -4080,7 +4246,14 @@ type SubtitleChanged struct {
 	// Browser and device information. The Chunkify player sends every field, with null
 	// for unavailable measurements. Other integrations may omit any field except
 	// schema_version. Extra properties are preserved.
-	BrowserContext              shared.BrowserContext         `json:"browser_context" api:"nullable"`
+	BrowserContext shared.BrowserContext `json:"browser_context" api:"nullable"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat              SubtitleChangedDeliveryFormat `json:"delivery_format" api:"nullable"`
 	DeliveryRequestCount        float64                       `json:"delivery_request_count" api:"nullable"`
 	DeliveryThroughputBps       float64                       `json:"delivery_throughput_bps" api:"nullable"`
 	DeliveryTransferredBytes    float64                       `json:"delivery_transferred_bytes" api:"nullable"`
@@ -4146,6 +4319,7 @@ type SubtitleChanged struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		DeliveryFormat              respjson.Field
 		DeliveryRequestCount        respjson.Field
 		DeliveryThroughputBps       respjson.Field
 		DeliveryTransferredBytes    respjson.Field
@@ -4258,6 +4432,17 @@ const (
 	SubtitleChangedStartupOutcomeEndedBeforeStart  SubtitleChangedStartupOutcome = "ended_before_start"
 )
 
+// How the player receives the media: hls for an HLS stream, file for a single
+// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+// omit it. Reports read it from each view's first start. Unlike connector_name, it
+// does not depend on the playback engine: Safari's native HLS reports html-media.
+type SubtitleChangedDeliveryFormat string
+
+const (
+	SubtitleChangedDeliveryFormatHls  SubtitleChangedDeliveryFormat = "hls"
+	SubtitleChangedDeliveryFormatFile SubtitleChangedDeliveryFormat = "file"
+)
+
 // Tab visibility when the event was recorded. Hidden does not imply paused
 // playback or identify the cause of a pause. Missing on older events; null when
 // unavailable.
@@ -4301,30 +4486,37 @@ type SubtitleChangedParam struct {
 	OccurredAt    time.Time                          `json:"occurred_at" api:"required" format:"date-time"`
 	// Name of the SDK or integration that produced the event. Informational metadata,
 	// preserved as received. Must contain at least one non-whitespace character.
-	SDKName                     string             `json:"sdk_name" api:"required"`
-	SDKVersion                  string             `json:"sdk_version" api:"required"`
-	Sequence                    int64              `json:"sequence" api:"required"`
-	VideoID                     string             `json:"video_id" api:"required"`
-	ViewID                      string             `json:"view_id" api:"required" format:"uuid"`
-	DeliveryRequestCount        param.Opt[float64] `json:"delivery_request_count,omitzero"`
-	DeliveryThroughputBps       param.Opt[float64] `json:"delivery_throughput_bps,omitzero"`
-	DeliveryTransferredBytes    param.Opt[float64] `json:"delivery_transferred_bytes,omitzero"`
-	DroppedVideoFrames          param.Opt[float64] `json:"dropped_video_frames,omitzero"`
-	FirstVideoFrameTimeMs       param.Opt[float64] `json:"first_video_frame_time_ms,omitzero"`
-	FurthestProgressRatio       param.Opt[float64] `json:"furthest_progress_ratio,omitzero"`
-	MediaDurationSeconds        param.Opt[float64] `json:"media_duration_seconds,omitzero"`
-	MediaHeightPx               param.Opt[float64] `json:"media_height_px,omitzero"`
-	MediaWidthPx                param.Opt[float64] `json:"media_width_px,omitzero"`
-	PlayerHeightPx              param.Opt[float64] `json:"player_height_px,omitzero"`
-	PlayerWidthPx               param.Opt[float64] `json:"player_width_px,omitzero"`
-	RebufferRatio               param.Opt[float64] `json:"rebuffer_ratio,omitzero"`
-	RenditionSwitchCount        param.Opt[float64] `json:"rendition_switch_count,omitzero"`
-	SelectedRenditionBitrateBps param.Opt[float64] `json:"selected_rendition_bitrate_bps,omitzero"`
-	SelectedRenditionCodec      param.Opt[string]  `json:"selected_rendition_codec,omitzero"`
-	SelectedRenditionHeight     param.Opt[float64] `json:"selected_rendition_height,omitzero"`
-	SelectedRenditionWidth      param.Opt[float64] `json:"selected_rendition_width,omitzero"`
-	StartupTimeMs               param.Opt[float64] `json:"startup_time_ms,omitzero"`
-	TotalVideoFrames            param.Opt[float64] `json:"total_video_frames,omitzero"`
+	SDKName    string `json:"sdk_name" api:"required"`
+	SDKVersion string `json:"sdk_version" api:"required"`
+	Sequence   int64  `json:"sequence" api:"required"`
+	VideoID    string `json:"video_id" api:"required"`
+	ViewID     string `json:"view_id" api:"required" format:"uuid"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat              param.Opt[SubtitleChangedDeliveryFormat] `json:"delivery_format,omitzero"`
+	DeliveryRequestCount        param.Opt[float64]                       `json:"delivery_request_count,omitzero"`
+	DeliveryThroughputBps       param.Opt[float64]                       `json:"delivery_throughput_bps,omitzero"`
+	DeliveryTransferredBytes    param.Opt[float64]                       `json:"delivery_transferred_bytes,omitzero"`
+	DroppedVideoFrames          param.Opt[float64]                       `json:"dropped_video_frames,omitzero"`
+	FirstVideoFrameTimeMs       param.Opt[float64]                       `json:"first_video_frame_time_ms,omitzero"`
+	FurthestProgressRatio       param.Opt[float64]                       `json:"furthest_progress_ratio,omitzero"`
+	MediaDurationSeconds        param.Opt[float64]                       `json:"media_duration_seconds,omitzero"`
+	MediaHeightPx               param.Opt[float64]                       `json:"media_height_px,omitzero"`
+	MediaWidthPx                param.Opt[float64]                       `json:"media_width_px,omitzero"`
+	PlayerHeightPx              param.Opt[float64]                       `json:"player_height_px,omitzero"`
+	PlayerWidthPx               param.Opt[float64]                       `json:"player_width_px,omitzero"`
+	RebufferRatio               param.Opt[float64]                       `json:"rebuffer_ratio,omitzero"`
+	RenditionSwitchCount        param.Opt[float64]                       `json:"rendition_switch_count,omitzero"`
+	SelectedRenditionBitrateBps param.Opt[float64]                       `json:"selected_rendition_bitrate_bps,omitzero"`
+	SelectedRenditionCodec      param.Opt[string]                        `json:"selected_rendition_codec,omitzero"`
+	SelectedRenditionHeight     param.Opt[float64]                       `json:"selected_rendition_height,omitzero"`
+	SelectedRenditionWidth      param.Opt[float64]                       `json:"selected_rendition_width,omitzero"`
+	StartupTimeMs               param.Opt[float64]                       `json:"startup_time_ms,omitzero"`
+	TotalVideoFrames            param.Opt[float64]                       `json:"total_video_frames,omitzero"`
 	// Optional integrator-supplied user ID, used to link views to the integrator's own
 	// users.
 	UserID param.Opt[string] `json:"user_id,omitzero"`
@@ -4454,6 +4646,13 @@ type ViewEnded struct {
 	// for unavailable measurements. Other integrations may omit any field except
 	// schema_version. Extra properties are preserved.
 	BrowserContext shared.BrowserContext `json:"browser_context" api:"nullable"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat ViewEndedDeliveryFormat `json:"delivery_format" api:"nullable"`
 	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
 	// to 16. Optional.
 	PlaybackRate float64 `json:"playback_rate" api:"nullable"`
@@ -4535,6 +4734,7 @@ type ViewEnded struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		DeliveryFormat              respjson.Field
 		PlaybackRate                respjson.Field
 		PlaybackRatePlayingTime     respjson.Field
 		PlayedRanges                respjson.Field
@@ -4627,6 +4827,17 @@ const (
 	ViewEndedStartupOutcomeEndedBeforeStart  ViewEndedStartupOutcome = "ended_before_start"
 )
 
+// How the player receives the media: hls for an HLS stream, file for a single
+// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+// omit it. Reports read it from each view's first start. Unlike connector_name, it
+// does not depend on the playback engine: Safari's native HLS reports html-media.
+type ViewEndedDeliveryFormat string
+
+const (
+	ViewEndedDeliveryFormatHls  ViewEndedDeliveryFormat = "hls"
+	ViewEndedDeliveryFormatFile ViewEndedDeliveryFormat = "file"
+)
+
 // Tab visibility when the event was recorded. Hidden does not imply paused
 // playback or identify the cause of a pause. Missing on older events; null when
 // unavailable.
@@ -4703,6 +4914,13 @@ type ViewEndedParam struct {
 	Sequence       int64   `json:"sequence" api:"required"`
 	VideoID        string  `json:"video_id" api:"required"`
 	ViewID         string  `json:"view_id" api:"required" format:"uuid"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat param.Opt[ViewEndedDeliveryFormat] `json:"delivery_format,omitzero"`
 	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
 	// to 16. Optional.
 	PlaybackRate param.Opt[float64] `json:"playback_rate,omitzero"`
@@ -4844,6 +5062,13 @@ type ViewSnapshot struct {
 	// for unavailable measurements. Other integrations may omit any field except
 	// schema_version. Extra properties are preserved.
 	BrowserContext shared.BrowserContext `json:"browser_context" api:"nullable"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat ViewSnapshotDeliveryFormat `json:"delivery_format" api:"nullable"`
 	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
 	// to 16. Optional.
 	PlaybackRate float64 `json:"playback_rate" api:"nullable"`
@@ -4925,6 +5150,7 @@ type ViewSnapshot struct {
 		ViewID                      respjson.Field
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
+		DeliveryFormat              respjson.Field
 		PlaybackRate                respjson.Field
 		PlaybackRatePlayingTime     respjson.Field
 		PlayedRanges                respjson.Field
@@ -5017,6 +5243,17 @@ const (
 	ViewSnapshotStartupOutcomeEndedBeforeStart  ViewSnapshotStartupOutcome = "ended_before_start"
 )
 
+// How the player receives the media: hls for an HLS stream, file for a single
+// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+// omit it. Reports read it from each view's first start. Unlike connector_name, it
+// does not depend on the playback engine: Safari's native HLS reports html-media.
+type ViewSnapshotDeliveryFormat string
+
+const (
+	ViewSnapshotDeliveryFormatHls  ViewSnapshotDeliveryFormat = "hls"
+	ViewSnapshotDeliveryFormatFile ViewSnapshotDeliveryFormat = "file"
+)
+
 // Tab visibility when the event was recorded. Hidden does not imply paused
 // playback or identify the cause of a pause. Missing on older events; null when
 // unavailable.
@@ -5093,6 +5330,13 @@ type ViewSnapshotParam struct {
 	Sequence       int64   `json:"sequence" api:"required"`
 	VideoID        string  `json:"video_id" api:"required"`
 	ViewID         string  `json:"view_id" api:"required" format:"uuid"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat param.Opt[ViewSnapshotDeliveryFormat] `json:"delivery_format,omitzero"`
 	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
 	// to 16. Optional.
 	PlaybackRate param.Opt[float64] `json:"playback_rate,omitzero"`
@@ -5242,6 +5486,13 @@ type ViewStarted struct {
 	// view_started accepts custom. Never put personal data here; use user_id for user
 	// identity.
 	Custom shared.CustomDimensions `json:"custom"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat ViewStartedDeliveryFormat `json:"delivery_format" api:"nullable"`
 	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
 	// to 16. Optional.
 	PlaybackRate float64 `json:"playback_rate" api:"nullable"`
@@ -5324,6 +5575,7 @@ type ViewStarted struct {
 		ViewerID                    respjson.Field
 		BrowserContext              respjson.Field
 		Custom                      respjson.Field
+		DeliveryFormat              respjson.Field
 		PlaybackRate                respjson.Field
 		PlaybackRatePlayingTime     respjson.Field
 		PlayedRanges                respjson.Field
@@ -5416,6 +5668,17 @@ const (
 	ViewStartedStartupOutcomeEndedBeforeStart  ViewStartedStartupOutcome = "ended_before_start"
 )
 
+// How the player receives the media: hls for an HLS stream, file for a single
+// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+// omit it. Reports read it from each view's first start. Unlike connector_name, it
+// does not depend on the playback engine: Safari's native HLS reports html-media.
+type ViewStartedDeliveryFormat string
+
+const (
+	ViewStartedDeliveryFormatHls  ViewStartedDeliveryFormat = "hls"
+	ViewStartedDeliveryFormatFile ViewStartedDeliveryFormat = "file"
+)
+
 // Tab visibility when the event was recorded. Hidden does not imply paused
 // playback or identify the cause of a pause. Missing on older events; null when
 // unavailable.
@@ -5492,6 +5755,13 @@ type ViewStartedParam struct {
 	Sequence       int64   `json:"sequence" api:"required"`
 	VideoID        string  `json:"video_id" api:"required"`
 	ViewID         string  `json:"view_id" api:"required" format:"uuid"`
+	// How the player receives the media: hls for an HLS stream, file for a single
+	// media file such as an MP4 rendition; null when unknown. Optional: older SDKs
+	// omit it. Reports read it from each view's first start. Unlike connector_name, it
+	// does not depend on the playback engine: Safari's native HLS reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat param.Opt[ViewStartedDeliveryFormat] `json:"delivery_format,omitzero"`
 	// Current playback rate, rounded to two decimals, such as 1, 1.5 or 2; from 0.01
 	// to 16. Optional.
 	PlaybackRate param.Opt[float64] `json:"playback_rate,omitzero"`
@@ -5674,6 +5944,14 @@ type EventListParams struct {
 	//
 	// Any of "AF", "AN", "AS", "EU", "NA", "OC", "SA".
 	Continent EventListParamsContinent `query:"continent,omitzero" json:"-"`
+	// Delivery format on the first retained view start: hls for HLS streams, file for
+	// a single media file such as an MP4 rendition. Metrics use the first retained
+	// view start; raw events use each event's value. Views whose SDK did not report it
+	// do not match. connector_name is not a substitute: Safari plays HLS natively and
+	// reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat EventListParamsDeliveryFormat `query:"delivery_format,omitzero" json:"-"`
 	// Exact device class. unknown matches an explicit unknown value.
 	//
 	// Any of "desktop", "mobile", "tablet", "unknown".
@@ -5715,6 +5993,18 @@ const (
 	EventListParamsContinentNa EventListParamsContinent = "NA"
 	EventListParamsContinentOc EventListParamsContinent = "OC"
 	EventListParamsContinentSa EventListParamsContinent = "SA"
+)
+
+// Delivery format on the first retained view start: hls for HLS streams, file for
+// a single media file such as an MP4 rendition. Metrics use the first retained
+// view start; raw events use each event's value. Views whose SDK did not report it
+// do not match. connector_name is not a substitute: Safari plays HLS natively and
+// reports html-media.
+type EventListParamsDeliveryFormat string
+
+const (
+	EventListParamsDeliveryFormatHls  EventListParamsDeliveryFormat = "hls"
+	EventListParamsDeliveryFormatFile EventListParamsDeliveryFormat = "file"
 )
 
 // Exact device class. unknown matches an explicit unknown value.
