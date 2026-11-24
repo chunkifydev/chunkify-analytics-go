@@ -35,6 +35,7 @@ func TestEngagementGetWithOptionalParams(t *testing.T) {
 		Continent:        chunkifyanalytics.EngagementGetParamsContinentAf,
 		Country:          chunkifyanalytics.String("SE"),
 		Cursor:           chunkifyanalytics.String("cursor"),
+		DeliveryFormat:   chunkifyanalytics.EngagementGetParamsDeliveryFormatHls,
 		DeviceType:       chunkifyanalytics.EngagementGetParamsDeviceTypeDesktop,
 		From:             chunkifyanalytics.Time(time.Now()),
 		GroupBy:          chunkifyanalytics.EngagementGetParamsGroupByBrowserName,

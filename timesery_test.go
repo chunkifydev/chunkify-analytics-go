@@ -37,6 +37,7 @@ func TestTimeseryGetWithOptionalParams(t *testing.T) {
 		City:             chunkifyanalytics.String("x"),
 		Continent:        chunkifyanalytics.TimeseryGetParamsContinentAf,
 		Country:          chunkifyanalytics.String("SE"),
+		DeliveryFormat:   chunkifyanalytics.TimeseryGetParamsDeliveryFormatHls,
 		DeviceType:       chunkifyanalytics.TimeseryGetParamsDeviceTypeDesktop,
 		Kind:             chunkifyanalytics.TimeseryGetParamsKindSummary,
 		OsName:           chunkifyanalytics.String("x"),

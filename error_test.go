@@ -35,6 +35,7 @@ func TestErrorListWithOptionalParams(t *testing.T) {
 		Continent:        chunkifyanalytics.ErrorListParamsContinentAf,
 		Country:          chunkifyanalytics.String("SE"),
 		Cursor:           chunkifyanalytics.String("cursor"),
+		DeliveryFormat:   chunkifyanalytics.ErrorListParamsDeliveryFormatHls,
 		DeviceType:       chunkifyanalytics.ErrorListParamsDeviceTypeDesktop,
 		From:             chunkifyanalytics.Time(time.Now()),
 		Limit:            chunkifyanalytics.Int(1),
