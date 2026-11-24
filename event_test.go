@@ -37,6 +37,7 @@ func TestEventListWithOptionalParams(t *testing.T) {
 		Continent:        chunkifyanalytics.EventListParamsContinentAf,
 		Country:          chunkifyanalytics.String("SE"),
 		Cursor:           chunkifyanalytics.String("cursor"),
+		DeliveryFormat:   chunkifyanalytics.EventListParamsDeliveryFormatHls,
 		DeviceType:       chunkifyanalytics.EventListParamsDeviceTypeDesktop,
 		EventName:        chunkifyanalytics.EventListParamsEventNameChunkifyVideoViewStarted,
 		From:             chunkifyanalytics.Time(time.Now()),
@@ -172,7 +173,8 @@ func TestEventIngestWithOptionalParams(t *testing.T) {
 						OfBool: chunkifyanalytics.Bool(false),
 					},
 				},
-				PlaybackRate: chunkifyanalytics.Float(0.01),
+				DeliveryFormat: chunkifyanalytics.Opt(chunkifyanalytics.ViewStartedDeliveryFormatHls),
+				PlaybackRate:   chunkifyanalytics.Float(0.01),
 				PlaybackRatePlayingTime: []shared.PlaybackRatePlayingTimeParam{{
 					PlayingTimeMs: 0,
 					Rate:          0.01,

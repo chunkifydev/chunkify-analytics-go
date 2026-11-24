@@ -264,6 +264,14 @@ type ViewListParams struct {
 	//
 	// Any of "AF", "AN", "AS", "EU", "NA", "OC", "SA".
 	Continent ViewListParamsContinent `query:"continent,omitzero" json:"-"`
+	// Delivery format on the first retained view start: hls for HLS streams, file for
+	// a single media file such as an MP4 rendition. Metrics use the first retained
+	// view start; raw events use each event's value. Views whose SDK did not report it
+	// do not match. connector_name is not a substitute: Safari plays HLS natively and
+	// reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat ViewListParamsDeliveryFormat `query:"delivery_format,omitzero" json:"-"`
 	// Exact device class. unknown matches an explicit unknown value.
 	//
 	// Any of "desktop", "mobile", "tablet", "unknown".
@@ -302,6 +310,18 @@ const (
 	ViewListParamsContinentNa ViewListParamsContinent = "NA"
 	ViewListParamsContinentOc ViewListParamsContinent = "OC"
 	ViewListParamsContinentSa ViewListParamsContinent = "SA"
+)
+
+// Delivery format on the first retained view start: hls for HLS streams, file for
+// a single media file such as an MP4 rendition. Metrics use the first retained
+// view start; raw events use each event's value. Views whose SDK did not report it
+// do not match. connector_name is not a substitute: Safari plays HLS natively and
+// reports html-media.
+type ViewListParamsDeliveryFormat string
+
+const (
+	ViewListParamsDeliveryFormatHls  ViewListParamsDeliveryFormat = "hls"
+	ViewListParamsDeliveryFormatFile ViewListParamsDeliveryFormat = "file"
 )
 
 // Exact device class. unknown matches an explicit unknown value.

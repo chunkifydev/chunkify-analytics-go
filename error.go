@@ -214,6 +214,14 @@ type ErrorListParams struct {
 	//
 	// Any of "AF", "AN", "AS", "EU", "NA", "OC", "SA".
 	Continent ErrorListParamsContinent `query:"continent,omitzero" json:"-"`
+	// Delivery format on the first retained view start: hls for HLS streams, file for
+	// a single media file such as an MP4 rendition. Metrics use the first retained
+	// view start; raw events use each event's value. Views whose SDK did not report it
+	// do not match. connector_name is not a substitute: Safari plays HLS natively and
+	// reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat ErrorListParamsDeliveryFormat `query:"delivery_format,omitzero" json:"-"`
 	// Exact device class. unknown matches an explicit unknown value.
 	//
 	// Any of "desktop", "mobile", "tablet", "unknown".
@@ -240,6 +248,18 @@ const (
 	ErrorListParamsContinentNa ErrorListParamsContinent = "NA"
 	ErrorListParamsContinentOc ErrorListParamsContinent = "OC"
 	ErrorListParamsContinentSa ErrorListParamsContinent = "SA"
+)
+
+// Delivery format on the first retained view start: hls for HLS streams, file for
+// a single media file such as an MP4 rendition. Metrics use the first retained
+// view start; raw events use each event's value. Views whose SDK did not report it
+// do not match. connector_name is not a substitute: Safari plays HLS natively and
+// reports html-media.
+type ErrorListParamsDeliveryFormat string
+
+const (
+	ErrorListParamsDeliveryFormatHls  ErrorListParamsDeliveryFormat = "hls"
+	ErrorListParamsDeliveryFormatFile ErrorListParamsDeliveryFormat = "file"
 )
 
 // Exact device class. unknown matches an explicit unknown value.

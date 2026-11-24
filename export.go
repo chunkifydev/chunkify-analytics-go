@@ -162,6 +162,8 @@ type ExportQueryParam struct {
 	ViewerID         param.Opt[string]    `json:"viewer_id,omitzero"`
 	// Any of "AF", "AN", "AS", "EU", "NA", "OC", "SA".
 	Continent ExportQueryContinent `json:"continent,omitzero"`
+	// Any of "hls", "file".
+	DeliveryFormat ExportQueryDeliveryFormat `json:"delivery_format,omitzero"`
 	// Any of "desktop", "mobile", "tablet", "unknown".
 	DeviceType ExportQueryDeviceType `json:"device_type,omitzero"`
 	// One custom dimension's values, such as custom.plan.
@@ -210,6 +212,13 @@ const (
 	ExportQueryContinentSa ExportQueryContinent = "SA"
 )
 
+type ExportQueryDeliveryFormat string
+
+const (
+	ExportQueryDeliveryFormatHls  ExportQueryDeliveryFormat = "hls"
+	ExportQueryDeliveryFormatFile ExportQueryDeliveryFormat = "file"
+)
+
 type ExportQueryDeviceType string
 
 const (
@@ -236,6 +245,7 @@ const (
 	ExportQueryDimensionPagePath         ExportQueryDimension = "page_path"
 	ExportQueryDimensionSubtitleLanguage ExportQueryDimension = "subtitle_language"
 	ExportQueryDimensionPlaybackRate     ExportQueryDimension = "playback_rate"
+	ExportQueryDimensionDeliveryFormat   ExportQueryDimension = "delivery_format"
 	ExportQueryDimensionCustomKeys       ExportQueryDimension = "custom_keys"
 )
 
@@ -266,6 +276,7 @@ const (
 	ExportQueryGroupByPagePath         ExportQueryGroupBy = "page_path"
 	ExportQueryGroupBySubtitleLanguage ExportQueryGroupBy = "subtitle_language"
 	ExportQueryGroupByPlaybackRate     ExportQueryGroupBy = "playback_rate"
+	ExportQueryGroupByDeliveryFormat   ExportQueryGroupBy = "delivery_format"
 	ExportQueryGroupByVideoTitle       ExportQueryGroupBy = "video_title"
 	ExportQueryGroupByUserID           ExportQueryGroupBy = "user_id"
 )
@@ -366,9 +377,11 @@ type ExportListColumnsParams struct {
 	// navigation. Filter by page_origin when grouping page_path to distinguish
 	// identical paths on different sites. video_title groups by the title on each
 	// view's first retained start, so a renamed video counts each view under the title
-	// it started with. user_id groups by the user ID on each view's first retained
-	// start. Use custom.<key>, such as custom.plan, to group by a custom dimension;
-	// views without the key form the null group.
+	// it started with. delivery_format groups by hls or file on each view's first
+	// retained start; views from SDKs that do not report it form the null group.
+	// user_id groups by the user ID on each view's first retained start. Use
+	// custom.<key>, such as custom.plan, to group by a custom dimension; views without
+	// the key form the null group.
 	GroupBy ExportListColumnsParamsGroupBy `query:"group_by,omitzero" json:"-"`
 	// Metric set for every time bucket. Uses the same calculations and sample counts
 	// as the corresponding totals route.
@@ -416,9 +429,11 @@ const (
 // navigation. Filter by page_origin when grouping page_path to distinguish
 // identical paths on different sites. video_title groups by the title on each
 // view's first retained start, so a renamed video counts each view under the title
-// it started with. user_id groups by the user ID on each view's first retained
-// start. Use custom.<key>, such as custom.plan, to group by a custom dimension;
-// views without the key form the null group.
+// it started with. delivery_format groups by hls or file on each view's first
+// retained start; views from SDKs that do not report it form the null group.
+// user_id groups by the user ID on each view's first retained start. Use
+// custom.<key>, such as custom.plan, to group by a custom dimension; views without
+// the key form the null group.
 type ExportListColumnsParamsGroupBy string
 
 const (
@@ -432,6 +447,7 @@ const (
 	ExportListColumnsParamsGroupByPagePath         ExportListColumnsParamsGroupBy = "page_path"
 	ExportListColumnsParamsGroupBySubtitleLanguage ExportListColumnsParamsGroupBy = "subtitle_language"
 	ExportListColumnsParamsGroupByPlaybackRate     ExportListColumnsParamsGroupBy = "playback_rate"
+	ExportListColumnsParamsGroupByDeliveryFormat   ExportListColumnsParamsGroupBy = "delivery_format"
 	ExportListColumnsParamsGroupByVideoTitle       ExportListColumnsParamsGroupBy = "video_title"
 	ExportListColumnsParamsGroupByUserID           ExportListColumnsParamsGroupBy = "user_id"
 )

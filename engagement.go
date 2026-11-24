@@ -139,6 +139,7 @@ const (
 	EngagementBreakdownPageGroupByPagePath         EngagementBreakdownPageGroupBy = "page_path"
 	EngagementBreakdownPageGroupBySubtitleLanguage EngagementBreakdownPageGroupBy = "subtitle_language"
 	EngagementBreakdownPageGroupByPlaybackRate     EngagementBreakdownPageGroupBy = "playback_rate"
+	EngagementBreakdownPageGroupByDeliveryFormat   EngagementBreakdownPageGroupBy = "delivery_format"
 	EngagementBreakdownPageGroupByVideoTitle       EngagementBreakdownPageGroupBy = "video_title"
 	EngagementBreakdownPageGroupByUserID           EngagementBreakdownPageGroupBy = "user_id"
 )
@@ -282,6 +283,14 @@ type EngagementGetParams struct {
 	//
 	// Any of "AF", "AN", "AS", "EU", "NA", "OC", "SA".
 	Continent EngagementGetParamsContinent `query:"continent,omitzero" json:"-"`
+	// Delivery format on the first retained view start: hls for HLS streams, file for
+	// a single media file such as an MP4 rendition. Metrics use the first retained
+	// view start; raw events use each event's value. Views whose SDK did not report it
+	// do not match. connector_name is not a substitute: Safari plays HLS natively and
+	// reports html-media.
+	//
+	// Any of "hls", "file".
+	DeliveryFormat EngagementGetParamsDeliveryFormat `query:"delivery_format,omitzero" json:"-"`
 	// Exact device class. unknown matches an explicit unknown value.
 	//
 	// Any of "desktop", "mobile", "tablet", "unknown".
@@ -296,9 +305,11 @@ type EngagementGetParams struct {
 	// navigation. Filter by page_origin when grouping page_path to distinguish
 	// identical paths on different sites. video_title groups by the title on each
 	// view's first retained start, so a renamed video counts each view under the title
-	// it started with. user_id groups by the user ID on each view's first retained
-	// start. Use custom.<key>, such as custom.plan, to group by a custom dimension;
-	// views without the key form the null group.
+	// it started with. delivery_format groups by hls or file on each view's first
+	// retained start; views from SDKs that do not report it form the null group.
+	// user_id groups by the user ID on each view's first retained start. Use
+	// custom.<key>, such as custom.plan, to group by a custom dimension; views without
+	// the key form the null group.
 	GroupBy EngagementGetParamsGroupBy `query:"group_by,omitzero" json:"-"`
 	paramObj
 }
@@ -324,6 +335,18 @@ const (
 	EngagementGetParamsContinentSa EngagementGetParamsContinent = "SA"
 )
 
+// Delivery format on the first retained view start: hls for HLS streams, file for
+// a single media file such as an MP4 rendition. Metrics use the first retained
+// view start; raw events use each event's value. Views whose SDK did not report it
+// do not match. connector_name is not a substitute: Safari plays HLS natively and
+// reports html-media.
+type EngagementGetParamsDeliveryFormat string
+
+const (
+	EngagementGetParamsDeliveryFormatHls  EngagementGetParamsDeliveryFormat = "hls"
+	EngagementGetParamsDeliveryFormatFile EngagementGetParamsDeliveryFormat = "file"
+)
+
 // Exact device class. unknown matches an explicit unknown value.
 type EngagementGetParamsDeviceType string
 
@@ -344,9 +367,11 @@ const (
 // navigation. Filter by page_origin when grouping page_path to distinguish
 // identical paths on different sites. video_title groups by the title on each
 // view's first retained start, so a renamed video counts each view under the title
-// it started with. user_id groups by the user ID on each view's first retained
-// start. Use custom.<key>, such as custom.plan, to group by a custom dimension;
-// views without the key form the null group.
+// it started with. delivery_format groups by hls or file on each view's first
+// retained start; views from SDKs that do not report it form the null group.
+// user_id groups by the user ID on each view's first retained start. Use
+// custom.<key>, such as custom.plan, to group by a custom dimension; views without
+// the key form the null group.
 type EngagementGetParamsGroupBy string
 
 const (
@@ -360,6 +385,7 @@ const (
 	EngagementGetParamsGroupByPagePath         EngagementGetParamsGroupBy = "page_path"
 	EngagementGetParamsGroupBySubtitleLanguage EngagementGetParamsGroupBy = "subtitle_language"
 	EngagementGetParamsGroupByPlaybackRate     EngagementGetParamsGroupBy = "playback_rate"
+	EngagementGetParamsGroupByDeliveryFormat   EngagementGetParamsGroupBy = "delivery_format"
 	EngagementGetParamsGroupByVideoTitle       EngagementGetParamsGroupBy = "video_title"
 	EngagementGetParamsGroupByUserID           EngagementGetParamsGroupBy = "user_id"
 )

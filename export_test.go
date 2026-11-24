@@ -37,6 +37,7 @@ func TestExportNewWithOptionalParams(t *testing.T) {
 			City:             chunkifyanalytics.String("x"),
 			Continent:        chunkifyanalytics.ExportQueryContinentAf,
 			Country:          chunkifyanalytics.String("SE"),
+			DeliveryFormat:   chunkifyanalytics.ExportQueryDeliveryFormatHls,
 			DeviceType:       chunkifyanalytics.ExportQueryDeviceTypeDesktop,
 			Dimension:        chunkifyanalytics.ExportQueryDimensionBrowserName,
 			EventName:        chunkifyanalytics.ExportQueryEventNameChunkifyVideoViewStarted,

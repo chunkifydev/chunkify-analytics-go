@@ -38,6 +38,7 @@ func TestDimensionListValuesWithOptionalParams(t *testing.T) {
 			Continent:        chunkifyanalytics.DimensionListValuesParamsContinentAf,
 			Country:          chunkifyanalytics.String("SE"),
 			Cursor:           chunkifyanalytics.String("cursor"),
+			DeliveryFormat:   chunkifyanalytics.DimensionListValuesParamsDeliveryFormatHls,
 			DeviceType:       chunkifyanalytics.DimensionListValuesParamsDeviceTypeDesktop,
 			From:             chunkifyanalytics.Time(time.Now()),
 			Limit:            chunkifyanalytics.Int(1),

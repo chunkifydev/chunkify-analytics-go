@@ -35,6 +35,7 @@ func TestQualityGetWithOptionalParams(t *testing.T) {
 		Continent:        chunkifyanalytics.QualityGetParamsContinentAf,
 		Country:          chunkifyanalytics.String("SE"),
 		Cursor:           chunkifyanalytics.String("cursor"),
+		DeliveryFormat:   chunkifyanalytics.QualityGetParamsDeliveryFormatHls,
 		DeviceType:       chunkifyanalytics.QualityGetParamsDeviceTypeDesktop,
 		From:             chunkifyanalytics.Time(time.Now()),
 		GroupBy:          chunkifyanalytics.QualityGetParamsGroupByBrowserName,
