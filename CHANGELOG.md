@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/chunkifydev/chunkify-analytics-go/compare/v0.9.0...v0.10.0) (2026-11-24)
+
+
+### Features
+
+* **api:** add delivery_format and seek timing ([87c06f8](https://github.com/chunkifydev/chunkify-analytics-go/commit/87c06f873230695971684211441105705bcb23a2))
+
 ## [0.9.0](https://github.com/chunkifydev/chunkify-analytics-go/compare/v0.0.1...v0.9.0) (2026-11-18)
 
 
